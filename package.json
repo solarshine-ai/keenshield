@@ -1,0 +1,8 @@
+{
+  "name": "keenshield",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^10.7.12"
+  }
+}
