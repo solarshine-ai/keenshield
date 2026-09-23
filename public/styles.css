@@ -297,6 +297,128 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.capture-field {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--line);
+}
+
+.capture-hint {
+  max-width: 46ch;
+  margin: 0;
+  color: rgba(32, 37, 31, 0.6);
+  font-size: 0.68rem;
+  line-height: 1.7;
+}
+
+/* Visually hidden but still focusable by the buttons that trigger it. The file
+   inputs are driven by .capture-button, never clicked directly. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.capture-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.capture-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  background: rgba(241, 236, 223, 0.55);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.capture-button svg {
+  width: 19px;
+  flex: none;
+  fill: none;
+  stroke: var(--moss);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.capture-button:hover,
+.capture-button:focus-visible {
+  border-color: var(--moss);
+  background: var(--cream);
+  transform: translateY(-1px);
+}
+
+.capture-status {
+  margin-top: 14px;
+  color: rgba(32, 37, 31, 0.6);
+  font-size: 0.66rem;
+}
+
+.photo-preview {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: rgba(250, 247, 238, 0.7);
+  animation: reveal 300ms ease-out both;
+}
+
+.photo-preview img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
+.photo-preview figcaption {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.photo-preview p {
+  margin: 0;
+  color: rgba(32, 37, 31, 0.64);
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
+.photo-remove {
+  padding: 0 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.photo-remove:hover {
+  border-bottom-color: var(--red);
+  color: var(--red);
+}
+
 .scan-button,
 .reset-button {
   border: 0;
@@ -522,6 +644,10 @@ textarea:focus {
   }
 
   .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .capture-actions {
     grid-template-columns: 1fr;
   }
 

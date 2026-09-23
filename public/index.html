@@ -32,8 +32,9 @@
         <p class="eyebrow">A second set of eyes</p>
         <h1 id="page-title">Read before<br />you <em>agree.</em></h1>
         <p class="lede">
-          Paste the text from a checkout, sign-up page, or agreement. Keenshield
-          surfaces hidden costs, cancellation traps, and suspicious requests.
+          Paste the text from a checkout, sign-up page, or agreement — or
+          photograph a printed one. Keenshield surfaces hidden costs,
+          cancellation traps, and suspicious requests.
         </p>
         <div class="signal-key" aria-label="Risk level guide">
           <span><i class="dot dot-green"></i>Clear</span>
@@ -46,7 +47,7 @@
         <div class="scanner-heading">
           <div>
             <p class="step-label">01 / Inspect</p>
-            <h2 id="scanner-title">Scan page text</h2>
+            <h2 id="scanner-title">Scan text or a photo</h2>
           </div>
           <svg class="scan-glyph" viewBox="0 0 64 64" aria-hidden="true">
             <path d="M10 22V10h12M42 10h12v12M54 42v12H42M22 54H10V42" />
@@ -67,16 +68,71 @@
           </div>
 
           <label class="field text-field">
-            <span>Page text</span>
+            <span>Page text <small>or attach a photo below</small></span>
             <textarea
               id="text"
               name="text"
               rows="10"
-              required
               placeholder="Paste the terms, checkout copy, or agreement here…"
             ></textarea>
             <span class="field-meta"><b id="character-count">0</b> / 8,000 characters analyzed</span>
           </label>
+
+          <div class="field capture-field">
+            <span>Photo of the fine print <small>optional</small></span>
+            <p class="capture-hint">
+              On a phone, point the camera at a printed contract, receipt, or
+              sign and Keenshield reads it for you. No typing needed.
+            </p>
+
+            <div class="capture-actions">
+              <button id="camera-button" class="capture-button" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3.5 8.5h3l1.6-2.4h7.8l1.6 2.4h3v11h-17z" />
+                  <circle cx="12" cy="13.6" r="3.5" />
+                </svg>
+                <span>Take a photo</span>
+              </button>
+              <button id="upload-button" class="capture-button" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 16.5V4.5M7.5 9 12 4.5 16.5 9" />
+                  <path d="M4.5 15v4.5h15V15" />
+                </svg>
+                <span>Choose an image</span>
+              </button>
+            </div>
+
+            <!-- Two inputs on purpose: `capture="environment"` opens the rear
+                 camera directly on a phone, which leaves no way to pick an
+                 existing photo. The second input covers that. -->
+            <input
+              id="camera-input"
+              class="sr-only"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              tabindex="-1"
+              aria-hidden="true"
+            />
+            <input
+              id="upload-input"
+              class="sr-only"
+              type="file"
+              accept="image/*"
+              tabindex="-1"
+              aria-hidden="true"
+            />
+
+            <div id="photo-status" class="capture-status" role="status" aria-live="polite" hidden></div>
+
+            <figure id="photo-preview" class="photo-preview" hidden>
+              <img id="photo-thumb" alt="Preview of the photo to be scanned" />
+              <figcaption>
+                <p id="photo-meta"></p>
+                <button id="photo-remove" class="photo-remove" type="button">Remove photo</button>
+              </figcaption>
+            </figure>
+          </div>
 
           <div id="form-error" class="form-error" role="alert" hidden></div>
 

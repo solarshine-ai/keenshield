@@ -12,6 +12,29 @@ const flagsWrap = document.querySelector("#flags-wrap");
 const flagsList = document.querySelector("#flags");
 const resetButton = document.querySelector("#reset-button");
 const submitButton = form.querySelector("button[type='submit']");
+const cameraButton = document.querySelector("#camera-button");
+const uploadButton = document.querySelector("#upload-button");
+const cameraInput = document.querySelector("#camera-input");
+const uploadInput = document.querySelector("#upload-input");
+const photoStatus = document.querySelector("#photo-status");
+const photoPreview = document.querySelector("#photo-preview");
+const photoThumb = document.querySelector("#photo-thumb");
+const photoMeta = document.querySelector("#photo-meta");
+const photoRemove = document.querySelector("#photo-remove");
+
+// Photos are resized in the browser before upload. 1,568px on the long edge
+// is the largest size the model gains any detail from, and shrinking a 12MP
+// phone photo to it turns a ~4MB upload into a few hundred kilobytes — which
+// matters most on the mobile connection the camera button is there for.
+const MAX_IMAGE_EDGE = 1568;
+const IMAGE_QUALITY = 0.82;
+
+// Guard on the file the user picks, before it is decoded. A photo this large is
+// either not a photo or will not survive being decoded on a phone anyway.
+const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
+
+// The prepared photo, as base64 ready for the scan request, or null.
+let selectedImage = null;
 
 const riskCopy = {
   green: { badge: "Clear", title: "Nothing concerning found" },
@@ -28,6 +51,138 @@ pageUrl.addEventListener("blur", () => {
   pageUrl.value = normalizeHttpsUrl(pageUrl.value);
 });
 
+cameraButton.addEventListener("click", () => cameraInput.click());
+uploadButton.addEventListener("click", () => uploadInput.click());
+
+[cameraInput, uploadInput].forEach((input) => {
+  input.addEventListener("change", async () => {
+    const file = input.files && input.files[0];
+    // Resetting the input's value lets the same file be picked twice in a row;
+    // without it the second `change` event never fires.
+    input.value = "";
+    if (file) await attachPhoto(file);
+  });
+});
+
+photoRemove.addEventListener("click", clearPhoto);
+
+async function attachPhoto(file) {
+  formError.hidden = true;
+
+  if (!file.type.startsWith("image/")) {
+    showError("That file is not an image. Take a photo or choose a picture instead.");
+    return;
+  }
+
+  if (file.size > MAX_SOURCE_BYTES) {
+    showError("That image is too large to scan. Try taking the photo again.");
+    return;
+  }
+
+  setPhotoStatus("Preparing photo…");
+
+  try {
+    const prepared = await prepareImage(file);
+    selectedImage = { data: prepared.data, mediaType: prepared.mediaType };
+
+    photoThumb.src = prepared.dataUrl;
+    photoMeta.textContent = `${prepared.width} × ${prepared.height} · ${formatBytes(prepared.byteLength)} ready to scan`;
+    photoPreview.hidden = false;
+    setPhotoStatus("");
+  } catch (error) {
+    console.error("Keenshield photo error:", error);
+    clearPhoto();
+    showError("That photo could not be read. Try taking it again.");
+  }
+}
+
+function clearPhoto() {
+  selectedImage = null;
+  photoPreview.hidden = true;
+  photoThumb.removeAttribute("src");
+  photoMeta.textContent = "";
+  setPhotoStatus("");
+}
+
+function setPhotoStatus(message) {
+  photoStatus.textContent = message;
+  photoStatus.hidden = !message;
+}
+
+// Decode, downscale, and re-encode as JPEG. The canvas round-trip is also what
+// strips the photo's EXIF metadata — location included — so none of it is sent
+// to the server.
+async function prepareImage(file) {
+  const source = await decodeImage(file);
+  const sourceWidth = source.naturalWidth || source.width;
+  const sourceHeight = source.naturalHeight || source.height;
+
+  if (!sourceWidth || !sourceHeight) throw new Error("Image has no dimensions");
+
+  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  // Photographed text is the whole point here, so bias the resampler toward
+  // keeping small glyphs legible.
+  context.imageSmoothingQuality = "high";
+  context.drawImage(source, 0, 0, width, height);
+
+  if (typeof source.close === "function") source.close();
+
+  const dataUrl = canvas.toDataURL("image/jpeg", IMAGE_QUALITY);
+  const data = dataUrl.slice(dataUrl.indexOf(",") + 1);
+
+  return {
+    dataUrl,
+    data,
+    mediaType: "image/jpeg",
+    width,
+    height,
+    // base64 carries 3 bytes in every 4 characters.
+    byteLength: Math.floor((data.length * 3) / 4)
+  };
+}
+
+async function decodeImage(file) {
+  // `imageOrientation: "from-image"` applies the EXIF rotation a phone camera
+  // records, so a portrait photo is not analyzed sideways.
+  if (typeof createImageBitmap === "function") {
+    try {
+      return await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      // Older Safari either lacks the options argument or the function itself.
+      // The <img> path below honours EXIF orientation on its own there.
+    }
+  }
+
+  return await new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Image could not be decoded"));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(form);
@@ -39,8 +194,8 @@ form.addEventListener("submit", async (event) => {
   formError.hidden = true;
   resultPanel.hidden = true;
 
-  if (!text) {
-    showError("Paste some page text before starting the scan.");
+  if (!text && !selectedImage) {
+    showError("Paste some page text or add a photo before starting the scan.");
     pageText.focus();
     return;
   }
@@ -54,7 +209,8 @@ form.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         url,
         title: String(formData.get("title") || "").trim(),
-        text
+        text,
+        ...(selectedImage ? { image: selectedImage } : {})
       })
     });
 
@@ -82,6 +238,9 @@ resetButton.addEventListener("click", () => {
   resultPanel.hidden = true;
   form.hidden = false;
   form.reset();
+  // `form.reset()` does not reach the photo: it lives outside the form's own
+  // fields, in module state and the preview.
+  clearPhoto();
   characterCount.textContent = "0";
   pageText.focus();
 });
@@ -116,11 +275,15 @@ function scanErrorMessage(status, data) {
   }
 
   if (status === 413) {
-    return "That page text is too long to scan. Try pasting a shorter section.";
+    return "That page text or photo is too large to scan. Try a shorter section or a new photo.";
+  }
+
+  if (status === 415) {
+    return "That image format is not supported. Take the photo again or choose a JPEG or PNG.";
   }
 
   if (status === 400) {
-    return "That text could not be scanned. Paste the page copy and try again.";
+    return "That submission could not be scanned. Paste the page copy or add a photo and try again.";
   }
 
   if (status === 401) {

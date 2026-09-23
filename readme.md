@@ -1,8 +1,9 @@
 # Keenshield Scan
 
 Keenshield is a Netlify-hosted fine-print scanner. The public page lets someone
-paste text from a checkout, sign-up flow, or agreement, then sends it to the
-server-side function for a plain-English risk summary.
+paste text from a checkout, sign-up flow, or agreement — or photograph a printed
+one with their phone camera — then sends it to the server-side function for a
+plain-English risk summary.
 
 The Anthropic API key stays in Netlify and is never sent to the browser.
 
@@ -75,10 +76,33 @@ extension, your own tooling. It is one shared secret with no per-user revocation
 which is why it is an owner hatch and not a paid tier.
 
 ## What it does
-- Receives `{ url, title, text, installId, userToken }` from the extension
-- Sends the page text to Claude with a scam/fine-print analysis prompt
+- Receives `{ url, title, text, image, installId, userToken }` from the extension
+  or the public page
+- Sends the page text and/or photo to Claude with a scam/fine-print analysis prompt
 - Returns `{ risk_level, flags, summary }`
 - Never exposes the API key to the browser
+
+### Photo input
+A request may carry page text, a photo, or both — at least one is required.
+The photo goes in `image` as base64:
+
+```json
+{ "image": { "mediaType": "image/jpeg", "data": "<base64>" } }
+```
+
+`mediaType` must be `image/jpeg`, `image/png`, `image/webp`, or `image/gif`, and
+the base64 payload is capped at 5MB (Anthropic's per-image ceiling). A full
+`data:` URL is accepted in place of bare base64. Rejections are
+`415 {"error": "Unsupported image type"}`,
+`413 {"error": "Image too large"}`, and
+`400 {"error": "Invalid image data"}`.
+
+The public page's **Take a photo** button uses
+`<input type="file" accept="image/*" capture="environment">`, which opens the
+rear camera on a phone. Before uploading, the browser resizes the photo to
+1,568px on its long edge and re-encodes it as JPEG — that keeps a 12MP camera
+photo to a few hundred kilobytes and, as a side effect of the canvas
+round-trip, strips the EXIF metadata (including location) from what is sent.
 
 ## Limits
 Two independent limits sit in front of the Claude call. A request has to pass
