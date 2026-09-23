@@ -27,7 +27,10 @@ const responseHeaders = {
 // This is a soft speed bump, not real security: any non-browser client can send
 // whatever Origin header it likes. It exists so the public page keeps working
 // without shipping the secret to the browser, not to stop a determined caller.
-const TRUSTED_ORIGINS = ["https://keenshield.netlify.app"];
+const TRUSTED_ORIGINS = [
+  "https://keenshield.netlify.app",
+  "https://keenshield.app"
+];
 
 // Compare a configured secret against a caller-supplied one without leaking
 // length or content through timing. Both sides are hashed first so the digests
