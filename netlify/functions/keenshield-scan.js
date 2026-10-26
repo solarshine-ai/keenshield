@@ -9,131 +9,23 @@
 // ============================================================
 
 import { getStore } from "@netlify/blobs";
-import { createHash, timingSafeEqual } from "node:crypto";
+import {
+  clientIpOf,
+  createRateLimiter,
+  isAdmitted,
+  isOwnerRequest,
+  jsonResponse,
+  responseHeaders
+} from "../../lib/gate.js";
 
-const responseHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, x-keenshield-secret, x-keenshield-owner-token",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-  "Vary": "Origin",
-  "Content-Type": "application/json"
-};
-
-// Requests from Keenshield's own site are let through without the shared
-// secret; everything else — the Chrome extension included — must send
-// `x-keenshield-secret`.
-//
-// This is a soft speed bump, not real security: any non-browser client can send
-// whatever Origin header it likes. It exists so the public page keeps working
-// without shipping the secret to the browser, not to stop a determined caller.
-const TRUSTED_ORIGINS = [
-  "https://keenshield.netlify.app",
-  "https://keenshield.app"
-];
-
-// Compare a configured secret against a caller-supplied one without leaking
-// length or content through timing. Both sides are hashed first so the digests
-// are always the same size and `timingSafeEqual` can never throw on mismatched
-// lengths. An empty or missing value on either side never matches.
-function tokensMatch(expected, provided) {
-  if (typeof expected !== "string" || typeof provided !== "string") return false;
-  if (!expected || !provided) return false;
-
-  return timingSafeEqual(
-    createHash("sha256").update(expected).digest(),
-    createHash("sha256").update(provided).digest()
-  );
-}
-
-function originOf(value) {
-  try {
-    return new URL(value).origin.toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-function isTrustedOrigin(request) {
-  const origin = originOf(request.headers.get("origin"));
-  if (!origin) return false;
-
-  if (TRUSTED_ORIGINS.some((trusted) => originOf(trusted) === origin)) return true;
-
-  // Same-origin as whatever host is serving this function, which covers deploy
-  // previews and `netlify dev` without hardcoding their URLs.
-  return originOf(request.url) === origin;
-}
-
-// -----------------------------------------------------------
-// Per-IP rate limiting
-//
-// A rolling window per caller IP, tracked in a Netlify Blobs store so the
-// count is shared across every function instance and survives cold starts.
-// This sits ON TOP of the origin exemption and the shared secret: trusted
-// origins and secret-bearing callers are rate limited too.
-// -----------------------------------------------------------
-const RATE_LIMIT_MAX_REQUESTS = 20;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
-const RATE_LIMIT_STORE_NAME = "keenshield-rate-limits";
-
-// Fallback only. If Netlify Blobs is unavailable (e.g. running outside a
-// Netlify environment), counts live in this module-scoped map instead.
-// NOTE: this in-memory counter resets on every cold start and is not shared
-// between concurrent function instances, so it is a materially weaker
-// guarantee than Blobs — a caller can exceed the limit by spreading requests
-// across instances or waiting for a recycle. It exists so the endpoint stays
-// available, not to be relied on for enforcement.
-const inMemoryRateLimits = new Map();
-
-function clientIpOf(request) {
-  const ip = request.headers.get("x-nf-client-connection-ip");
-  if (!ip) return "unknown";
-  // Blob keys allow a limited character set; keep it conservative.
-  return ip.trim().replace(/[^a-zA-Z0-9.:_-]/g, "_").slice(0, 100) || "unknown";
-}
-
-// Given the stored record, decide whether this request is allowed and what the
-// record should become. Shared by both the Blobs and in-memory paths.
-function nextRateLimitState(record, now) {
-  if (!record || typeof record.count !== "number" || typeof record.windowStart !== "number"
-      || now - record.windowStart >= RATE_LIMIT_WINDOW_MS) {
-    return { allowed: true, record: { count: 1, windowStart: now } };
-  }
-
-  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return { allowed: false, record };
-  }
-
-  return { allowed: true, record: { count: record.count + 1, windowStart: record.windowStart } };
-}
-
-async function checkRateLimit(ip) {
-  const now = Date.now();
-
-  try {
-    // Strong consistency: a counter read immediately after a write must not be
-    // stale, otherwise the limit is trivially bypassed by rapid-fire requests.
-    const store = getStore({ name: RATE_LIMIT_STORE_NAME, consistency: "strong" });
-    const record = await store.get(ip, { type: "json" });
-    const next = nextRateLimitState(record, now);
-
-    if (next.allowed) {
-      await store.setJSON(ip, next.record);
-    }
-
-    return next.allowed;
-  } catch (err) {
-    console.error("Rate limit store unavailable, falling back to in-memory counter:", err);
-
-    const next = nextRateLimitState(inMemoryRateLimits.get(ip), now);
-    if (next.allowed) {
-      inMemoryRateLimits.set(ip, next.record);
-    }
-
-    return next.allowed;
-  }
-}
+// Per-IP rate limit for deep scans. This sits ON TOP of the origin exemption
+// and the shared secret: trusted origins and secret-bearing callers are rate
+// limited too. See lib/gate.js for how the window is tracked.
+const checkRateLimit = createRateLimiter({
+  storeName: "keenshield-rate-limits",
+  maxRequests: 20,
+  windowMs: 60 * 60 * 1000 // 60 minutes
+});
 
 // -----------------------------------------------------------
 // Per-install free scan limit
@@ -212,40 +104,9 @@ async function checkFreeScanLimit(installId) {
   }
 }
 
-// -----------------------------------------------------------
-// Owner bypass
-//
-// A single private token, held only by the project owner, that lifts BOTH
-// limits above: the per-IP rate limit and the per-install free scan limit.
-// This is what fills the `userToken` slot the handler always accepted and
-// ignored — but only for the owner. There is still no general paid tier.
-//
-// The token may arrive either as the `x-keenshield-owner-token` header or as
-// `userToken` in the request body, so the extension, curl, and any local
-// tooling can all use it without a bespoke shape.
-//
-// Holding it also satisfies the shared-secret gate, since a caller who can
-// prove they are the owner is by definition allowed to call the endpoint.
-//
-// NEVER put this value in frontend code or the Chrome extension's bundled
-// config — both ship to users. It belongs in the KEENSHIELD_OWNER_TOKEN
-// environment variable and in requests the owner makes by hand.
-//
-// If KEENSHIELD_OWNER_TOKEN is unset, nobody is the owner and every caller is
-// metered normally. That is the safe default: a missing variable must never
-// read as a match.
-// -----------------------------------------------------------
-const OWNER_TOKEN_HEADER = "x-keenshield-owner-token";
-
-function isOwnerRequest(request, body) {
-  const ownerToken = process.env.KEENSHIELD_OWNER_TOKEN;
-  if (!ownerToken) return false;
-
-  const fromHeader = request.headers.get(OWNER_TOKEN_HEADER);
-  const fromBody = body && typeof body.userToken === "string" ? body.userToken : null;
-
-  return tokensMatch(ownerToken, fromHeader) || tokensMatch(ownerToken, fromBody);
-}
+// The owner bypass (KEENSHIELD_OWNER_TOKEN) lives in lib/gate.js. It lifts
+// BOTH limits here — the per-IP rate limit and the per-install free scan
+// limit — and also satisfies the shared-secret gate.
 
 // The body has to be parsed before the limits now, because the owner token can
 // arrive inside it. Reading an already-received body is cheap next to the
@@ -292,13 +153,6 @@ function imageOf(body) {
   return { mediaType, data };
 }
 
-function jsonResponse(statusCode, body, extraHeaders) {
-  return new Response(JSON.stringify(body), {
-    status: statusCode,
-    headers: extraHeaders ? { ...responseHeaders, ...extraHeaders } : responseHeaders
-  });
-}
-
 export default async function (request) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: responseHeaders });
@@ -331,12 +185,8 @@ export default async function (request) {
 
   // Shared-secret gate. Keenshield's own site is exempt by origin, the owner is
   // exempt by token, and every other caller must present the shared secret.
-  if (!isOwner && !isTrustedOrigin(request)) {
-    const sharedSecret = process.env.KEENSHIELD_SHARED_SECRET;
-    const providedSecret = request.headers.get("x-keenshield-secret");
-    if (!tokensMatch(sharedSecret, providedSecret)) {
-      return jsonResponse(401, { error: "Unauthorized" });
-    }
+  if (!isAdmitted(request, isOwner)) {
+    return jsonResponse(401, { error: "Unauthorized" });
   }
 
   // Per-IP rate limit. Applies to every caller that got past the gate above,
@@ -457,7 +307,7 @@ ${trimmedText}
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-5-5",
         max_tokens: 700,
         system: systemPrompt,
         messages: [{ role: "user", content: messageContent }]

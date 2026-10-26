@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="brand">Keenshield</span>
+      <a id="site-link" href="https://keenshield.app" target="_blank" rel="noopener">keenshield.app</a>
+    </header>
+
+    <section id="empty" hidden>
+      <p class="headline">No number for this page yet.</p>
+      <p class="muted">Keenshield scores regular web pages. Reload the page if it just opened.</p>
+    </section>
+
+    <section id="score-view" hidden>
+      <div class="score-row">
+        <span id="score" class="score" data-level="green">1</span>
+        <div>
+          <p id="headline" class="headline"></p>
+          <p id="address" class="muted"></p>
+        </div>
+      </div>
+      <ul id="reasons"></ul>
+      <p id="summary" class="summary"></p>
+      <button id="deep-button" type="button">Full breakdown of this page</button>
+    </section>
+
+    <section id="deep-view" hidden>
+      <p id="deep-status" class="muted" role="status"></p>
+      <ul id="deep-flags"></ul>
+      <p id="deep-summary" class="summary"></p>
+      <a id="upgrade" class="upgrade" href="https://keenshield.app/#pricing" target="_blank" rel="noopener" hidden>See plans</a>
+    </section>
+
+    <footer>Keenshield only explains. What you do next is up to you.</footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

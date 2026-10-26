@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Keenshield",
+  "version": "2.0.0",
+  "description": "A risk number for every site. Never blocks, never pops up — click the shield to read why, then decide.",
+  "icons": {
+    "16": "icons/shield-16.png",
+    "32": "icons/shield-32.png",
+    "48": "icons/shield-48.png",
+    "128": "icons/shield-128.png"
+  },
+  "action": {
+    "default_title": "Keenshield",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/shield-16.png",
+      "32": "icons/shield-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage"],
+  "host_permissions": ["https://keenshield.app/*"]
+}

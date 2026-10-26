@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="What the Keenshield extension and website see, send, keep and never do with your data." />
+    <link rel="canonical" href="https://keenshield.app/privacy" />
+    <title>Privacy policy — Keenshield</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Keenshield home">
+        <span class="brand-mark" aria-hidden="true">K</span>
+        <span>Keenshield</span>
+      </a>
+      <nav class="site-nav" aria-label="Sections">
+        <a href="/#how">How it works</a>
+        <a href="/#privacy">Privacy</a>
+        <a href="/#pricing">Pricing</a>
+        <a class="nav-cta" href="/#get">Get Keenshield</a>
+      </nav>
+    </header>
+    <main class="legal">
+      <p class="eyebrow">Privacy policy</p>
+      <h1>What Keenshield sees, and what it does with it.</h1>
+      <p class="updated">Last updated October 11, 2026</p>
+
+      <p>Keenshield is a browser extension and website that show how risky a web page or document is likely to be for you. This policy covers both. We've written it to be read, not skimmed past.</p>
+
+      <h2>The short version</h2>
+      <ul>
+        <li>Keenshield never blocks pages or pops anything up. It shows a number on its icon.</li>
+        <li>Page text is only sent for analysis on pages that ask you to agree, pay, subscribe, sign up or share personal details — and it isn't stored.</li>
+        <li>We don't sell or share your browsing, show ads, or take money to change a score.</li>
+      </ul>
+
+      <h2>What the extension reads</h2>
+      <p>On every page, the extension checks the web address for warning signs such as lookalike domains, raw IP addresses, or a missing secure connection.</p>
+      <p>On pages that look like a decision — a checkout, sign-up, subscription, terms or payment page — it also reads the page's visible text and whether the page has password, payment or "I agree" fields. It does not read what you type into those fields.</p>
+
+      <h2>What is sent, and to whom</h2>
+      <p>For decision pages, the page address (without anything after a "?" or "#") and up to 8,000 characters of visible text are sent to Keenshield's server, which runs on Netlify. The text is analyzed by Claude, an AI model made by Anthropic. Anthropic does not use data sent through its commercial API to train its models by default.</p>
+      <p>When you use the scanner on our website, the text or photo you provide is sent the same way. Photos are resized in your browser before upload, which also removes hidden location data.</p>
+
+      <h2>What we keep</h2>
+      <ul>
+        <li><b>Page scores.</b> For each scored page, we keep the score, the reasons, a short summary and the page's address without query strings — so the next visitor gets the same answer instantly. We instruct the AI not to include personal details in these. We keep a fingerprint (hash) of the page text to tell when the page changes, but never the text itself.</li>
+        <li><b>An install ID.</b> A random ID created when you install the extension, used to count your free deep scans. It isn't linked to your name or email.</li>
+        <li><b>Abuse counts.</b> A count of requests per network (IP) address over the last hour, used only to stop abuse, and replaced as the hour rolls over.</li>
+        <li><b>Your email, if you give it.</b> If you join our list, we keep your email and the plan you're interested in, and use them only to tell you when Keenshield or that plan is available.</li>
+        <li><b>Server logs.</b> Our hosting provider keeps routine technical logs for a limited time for security and troubleshooting.</li>
+      </ul>
+
+      <h2>What we never do</h2>
+      <ul>
+        <li>Sell, rent or share your browsing history or personal information.</li>
+        <li>Show ads or use affiliate links in the extension.</li>
+        <li>Let a business pay to raise or lower its score. A score only changes when the page changes.</li>
+      </ul>
+
+      <h2>Your choices</h2>
+      <p>You can uninstall the extension at any time, which stops all collection. To remove your email from our list or ask a question about your data, email <a href="mailto:privacy@keenshield.app">privacy@keenshield.app</a>.</p>
+
+      <h2>Changes</h2>
+      <p>If we change what Keenshield collects, we'll update this page and the date at the top before the change takes effect.</p>
+    </main>
+    <footer class="site-footer">
+      <p><b>Keenshield</b> — plain-English guidance, not legal advice.</p>
+      <nav aria-label="Legal">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="mailto:privacy@keenshield.app">Contact</a>
+      </nav>
+    </footer>
+  </body>
+</html>

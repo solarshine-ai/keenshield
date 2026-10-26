@@ -7,11 +7,21 @@ plain-English risk summary.
 
 The Anthropic API key stays in Netlify and is never sent to the browser.
 
+Keenshield is now built extension-first. The extension puts a 1–10 risk number
+on its toolbar shield, never blocks anything and never pops up, and the person
+clicks the shield to read why. keenshield.app is the extension's home: what it
+does, the bigger scanner, the trust and privacy section, pricing and a launch
+waitlist.
+
 ## Setup
 1. Deploy this repository to Netlify.
 2. In Netlify's dashboard → **Site settings → Environment variables**, add:
    - `ANTHROPIC_API_KEY` = your actual Anthropic API key
    - `KEENSHIELD_SHARED_SECRET` = a long random string the extension will send
+   - `KEENSHIELD_EXTENSION_IDS` = your Chrome extension's ID (comma-separate
+     several, e.g. the Web Store ID and a local unpacked build's ID). Requests
+     from these extensions are let in without the shared secret, so no secret
+     has to ship in the extension's code.
    - `KEENSHIELD_OWNER_TOKEN` = a long random string, for your own unlimited use
      (optional — leave it unset and nobody gets an exemption)
 3. Redeploy after saving the variable.
@@ -153,9 +163,46 @@ send an `installId` is written up in
 - **Accounts / paid tier**: `userToken` now lifts the limits for one value — the owner token — and is otherwise ignored. Real accounts are still missing: a single shared secret cannot be revoked per user or attributed to a subscriber, so that is what should eventually lift the 5-scan limit for paying users.
 - **Install IDs are self-reported**: an install ID is just a string the client sends. Tying scans to a real account is the only way to make the free-tier limit hold.
 
+## The shield number (`/api/site-score`)
+The endpoint behind the number on the extension's icon. It applies the same
+shared-secret gate as the deep scan. Its budget is separate and much larger
+(600 lookups per IP per hour, at most 60 of them fresh AI scores), because it
+runs during ordinary browsing. It does not touch the 5 free deep scans.
+
+It keeps cost down in layers:
+1. **Address checks.** Lookalike brand domains, raw IP addresses, look-alike
+   characters, throwaway TLDs, and password or payment pages without HTTPS.
+   These are free and need no AI.
+2. **Decision pages only.** Pages that don't ask the person to agree, pay,
+   subscribe, sign up or share sensitive details stop at the address checks.
+3. **Score once, share with everyone.** Decision pages are scored by
+   `claude-haiku-5-5` and stored in Netlify Database (`site_scores`), keyed by
+   hostname + path with no query string. Later visitors get the stored score
+   while the page text is unchanged (up to 30 days), or within 24 hours
+   regardless, since cart pages change on every load.
+
+Page text is never stored, only a hash of it. If the database is unavailable,
+the endpoint scores fresh rather than failing, so the shield always gets a
+number. The extension side is written up in
+[`docs/extension-shield-score.md`](docs/extension-shield-score.md).
+
+## Waitlist (`/api/waitlist`)
+The pricing section's form saves `{ email, plan }` to the `waitlist` table so
+demand for each plan can be measured before payments go live. Plans are
+`launch`, `pro`, `family`, `document` and `teams`. Only Keenshield's own site
+can post to it, with a per-IP limit and a honeypot field against bots.
+
 ## Project structure
-- `public/` contains the scanner interface.
-- `netlify/functions/keenshield-scan.js` contains the server-side analysis function.
+- `public/` is the website: the extension homepage (`index.html`, `home.js`),
+  the scanner (`app.js`), and the privacy policy and terms pages.
+- `netlify/functions/keenshield-scan.js` is the deep scan (`claude-sonnet-5-5`).
+- `netlify/functions/site-score.ts` is the shield number.
+- `netlify/functions/waitlist.ts` is the launch and pricing waitlist.
+- `lib/gate.js` holds the shared rules for who may call the endpoints and how
+  fast.
+- `db/schema.ts` is the database schema. Migrations in
+  `netlify/database/migrations/` are applied by Netlify on deploy.
+- `extension/` is the Chrome extension. See `extension/README.md` to load it.
 - `netlify.toml` defines the publish and functions directories.
 
 ## Test locally
