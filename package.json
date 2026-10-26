@@ -3,6 +3,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@netlify/blobs": "^10.7.12"
+    "@netlify/blobs": "^10.7.12",
+    "@netlify/database": "^2.0.1",
+    "drizzle-orm": "^1.0.0-beta.22"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^1.0.0-beta.22"
   }
 }

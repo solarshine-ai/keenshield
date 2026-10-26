@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Keenshield reads the fine print and highlights terms worth a second look."
+      content="Keenshield puts a risk number on the shield in your browser. It never blocks a page and never pops up — click it to read why a site scored what it did, then decide for yourself."
     />
-    <link rel="canonical" href="https://keenshield.netlify.app/" />
-    <title>Keenshield — Read before you agree</title>
+    <link rel="canonical" href="https://keenshield.app/" />
+    <title>Keenshield — A risk number for every site. You decide.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,26 +24,101 @@
         <span class="brand-mark" aria-hidden="true">K</span>
         <span>Keenshield</span>
       </a>
-      <p class="status"><span></span> Fine-print scanner</p>
+      <nav class="site-nav" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#scanner">Scanner</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#pricing">Pricing</a>
+        <a class="nav-cta" href="#get" data-plan="launch">Get Keenshield</a>
+      </nav>
     </header>
 
     <main>
-      <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow">A second set of eyes</p>
-        <h1 id="page-title">Read before<br />you <em>agree.</em></h1>
-        <p class="lede">
-          Paste the text from a checkout, sign-up page, or agreement — or
-          photograph a printed one. Keenshield surfaces hidden costs,
-          cancellation traps, and suspicious requests.
-        </p>
-        <div class="signal-key" aria-label="Risk level guide">
-          <span><i class="dot dot-green"></i>Clear</span>
-          <span><i class="dot dot-yellow"></i>Worth knowing</span>
-          <span><i class="dot dot-red"></i>High concern</span>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow">A browser extension for Chrome</p>
+          <h1 id="page-title">Like a firewall.<br />Except <em>you</em> decide.</h1>
+          <p class="lede">
+            Keenshield puts a small risk number on the shield in your browser
+            toolbar. It never blocks a page and never pops up. When the number
+            climbs, click the shield to read why — then do what you think is right.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#get" data-plan="launch">
+              <span>Get notified at launch</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </a>
+            <a class="quiet-link" href="#scanner">Or try the scanner now</a>
+          </div>
+        </div>
+
+        <figure class="demo" aria-label="Example: the Keenshield number changing as you browse">
+          <div class="demo-window">
+            <div class="demo-toolbar">
+              <span class="demo-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="demo-address" id="demo-address">harbor-goods.com</span>
+              <span class="demo-shield" id="demo-shield" data-level="green" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2.8 4.5 5.6v5.9c0 4.7 3.2 8.4 7.5 9.7 4.3-1.3 7.5-5 7.5-9.7V5.6z" /></svg>
+                <b id="demo-score">1</b>
+              </span>
+            </div>
+            <div class="demo-panel" id="demo-panel">
+              <p class="demo-panel-label">Why this site got a <b id="demo-panel-score">1</b></p>
+              <ul id="demo-reasons">
+                <li>Nothing here asks you to agree, pay or sign in.</li>
+              </ul>
+              <p class="demo-panel-foot">Keenshield only explains. What you do next is up to you.</p>
+            </div>
+          </div>
+          <figcaption id="demo-caption">Browsing a shop's homepage</figcaption>
+        </figure>
+      </section>
+
+      <section class="how" id="how" aria-labelledby="how-title">
+        <p class="step-label">How it works</p>
+        <h2 id="how-title" class="section-title">Three seconds of attention, only when it matters.</h2>
+        <ol class="how-steps">
+          <li>
+            <span class="how-num">01</span>
+            <h3>Browse like normal</h3>
+            <p>Keenshield sits quietly on the shield icon. No banners, no interruptions, nothing blocked — ever.</p>
+          </li>
+          <li>
+            <span class="how-num">02</span>
+            <h3>Glance at the number</h3>
+            <p>Every page gets a score from 1 to 10. Most sites stay low. It moves when a page asks you to agree, pay, subscribe or hand over something personal.</p>
+          </li>
+          <li>
+            <span class="how-num">03</span>
+            <h3>Click to read why</h3>
+            <p>One click shows the reasons in plain English — the auto-renewal, the off-platform deposit, the lookalike address. Then you choose.</p>
+          </li>
+        </ol>
+
+        <div class="scale" aria-label="What the numbers mean">
+          <div class="scale-band scale-green"><b>1–3</b><span>Normal. Nothing worth flagging.</span></div>
+          <div class="scale-band scale-yellow"><b>4–6</b><span>Legitimate, but read before you agree.</span></div>
+          <div class="scale-band scale-red"><b>7–10</b><span>Predatory terms or likely scam.</span></div>
         </div>
       </section>
 
-      <section class="scanner-shell" aria-labelledby="scanner-title">
+      <section class="scanner-section" id="scanner" aria-labelledby="scanner-intro-title">
+        <div class="intro">
+          <p class="eyebrow">The bigger scanner</p>
+          <h2 id="scanner-intro-title" class="section-title">For everything the shield can't see.</h2>
+          <p class="lede">
+            Paste a long agreement, or photograph a paper lease, contract,
+            receipt or sign with your phone. Keenshield reads it and surfaces
+            hidden costs, cancellation traps and suspicious requests.
+          </p>
+          <div class="signal-key" aria-label="Risk level guide">
+            <span><i class="dot dot-green"></i>Clear</span>
+            <span><i class="dot dot-yellow"></i>Worth knowing</span>
+            <span><i class="dot dot-red"></i>High concern</span>
+          </div>
+        </div>
+
+<section class="scanner-shell" aria-labelledby="scanner-title">
         <div class="scanner-heading">
           <div>
             <p class="step-label">01 / Inspect</p>
@@ -166,12 +241,159 @@
         </article>
       </section>
 
-      <aside class="trust-note">
-        <span>Private by design</span>
-        <p>Your API key remains on the server. Keenshield provides plain-English guidance, not legal advice.</p>
-      </aside>
+            </section>
+
+      <section class="privacy" id="privacy" aria-labelledby="privacy-title">
+        <div class="privacy-head">
+          <p class="step-label">Trust &amp; privacy</p>
+          <h2 id="privacy-title" class="section-title">A shield you can see through.</h2>
+          <p class="lede">
+            An extension that reads web pages has to earn your trust. Here is
+            exactly what Keenshield does with what it sees, in plain words.
+          </p>
+        </div>
+
+        <dl class="privacy-list">
+          <div>
+            <dt>It never blocks or interrupts</dt>
+            <dd>Keenshield only shows a number on its icon. It doesn't stop pages from loading, cover them with warnings, or pop anything up.</dd>
+          </div>
+          <div>
+            <dt>Ordinary pages: only the address is checked</dt>
+            <dd>On a page that doesn't ask you to agree, pay, subscribe or share personal details, Keenshield looks at the web address only — for things like lookalike domains — and the page's text goes nowhere.</dd>
+          </div>
+          <div>
+            <dt>Decision pages: text is analyzed, then discarded</dt>
+            <dd>On checkout, sign-up, terms and similar pages, the visible text is sent to Keenshield's server and analyzed by Anthropic's Claude AI. We don't save the text. We keep the score and reasons for that page's address — without anything after a "?" — so the next person gets the answer instantly.</dd>
+          </div>
+          <div>
+            <dt>Your data doesn't train AI</dt>
+            <dd>Anthropic does not use data sent through its commercial API to train its models by default.</dd>
+          </div>
+          <div>
+            <dt>Photos are cleaned first</dt>
+            <dd>Photos you scan are resized in your browser before upload, which strips hidden location data. They're analyzed and not kept.</dd>
+          </div>
+          <div>
+            <dt>No ads. No selling your browsing.</dt>
+            <dd>Keenshield has no ads and never sells or shares what you browse. There are no affiliate deals, and no business can pay to change its score.</dd>
+          </div>
+          <div>
+            <dt>What we do keep</dt>
+            <dd>A random install ID to count free scans, a short-lived count of requests per network address to stop abuse, and your email only if you join the list below.</dd>
+          </div>
+          <div>
+            <dt>Not legal advice</dt>
+            <dd>Keenshield points out what's worth a second look. It can miss things, and it isn't a lawyer.</dd>
+          </div>
+        </dl>
+        <p class="privacy-more">Read the full <a href="/privacy">privacy policy</a> and <a href="/terms">terms</a>.</p>
+      </section>
+
+      <section class="pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="pricing-head">
+          <p class="step-label">Pricing</p>
+          <h2 id="pricing-title" class="section-title">The number is free. Always.</h2>
+          <div class="billing-toggle" role="group" aria-label="Billing period">
+            <button type="button" data-billing="yearly" aria-pressed="true">Yearly</button>
+            <button type="button" data-billing="monthly" aria-pressed="false">Monthly</button>
+          </div>
+        </div>
+
+        <div class="plans">
+          <article class="plan">
+            <h3>Free</h3>
+            <p class="price"><b>$0</b></p>
+            <ul>
+              <li>The risk number on every site</li>
+              <li>The top reason for each score</li>
+              <li>5 deep scans to try the full breakdown</li>
+            </ul>
+            <a class="plan-button" href="#get" data-plan="launch">Get notified at launch</a>
+          </article>
+
+          <article class="plan plan-featured">
+            <p class="plan-tag">Most popular</p>
+            <h3>Pro</h3>
+            <p class="price">
+              <b data-price-yearly="$39" data-price-monthly="$4.99">$39</b>
+              <span data-per-yearly="/ year — about $3.25 a month" data-per-monthly="/ month">/ year — about $3.25 a month</span>
+            </p>
+            <ul>
+              <li>Every reason, the exact clause, and what it means for you</li>
+              <li>Unlimited deep scans of any page</li>
+              <li>Photo and document scanner for leases and contracts</li>
+              <li>History of what you've agreed to and subscribed to</li>
+              <li>Alerts when a site you use changes its terms</li>
+            </ul>
+            <a class="plan-button" href="#get" data-plan="pro">Join the Pro list</a>
+          </article>
+
+          <article class="plan">
+            <h3>Family</h3>
+            <p class="price">
+              <b data-price-yearly="$59" data-price-monthly="$5.99">$59</b>
+              <span data-per-yearly="/ year for up to 5 people" data-per-monthly="/ month for up to 5 people">/ year for up to 5 people</span>
+            </p>
+            <ul>
+              <li>Everything in Pro, for everyone in the family</li>
+              <li>Look out for parents and grandparents — the people scammers target most</li>
+            </ul>
+            <a class="plan-button" href="#get" data-plan="family">Join the Family list</a>
+          </article>
+        </div>
+
+        <div class="pricing-extras">
+          <p><b>One document, no subscription — $2.99.</b> Review a single lease or contract with the full breakdown.
+            <a href="#get" data-plan="document">Tell me when it's available</a></p>
+          <p><b>Using Keenshield at work?</b> Team plans with an admin view are coming.
+            <a href="#get" data-plan="teams">Talk to us about teams</a></p>
+        </div>
+
+        <form id="waitlist-form" class="waitlist" novalidate>
+          <div id="get" class="waitlist-anchor"></div>
+          <div class="waitlist-copy">
+            <h3>Be first in line</h3>
+            <p>Keenshield is coming to the Chrome Web Store. Paid plans aren't open yet — leave your email and we'll tell you when they are. Nothing else.</p>
+          </div>
+          <div class="waitlist-fields">
+            <label class="field">
+              <span>Email</span>
+              <input id="waitlist-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </label>
+            <label class="field">
+              <span>Interested in</span>
+              <select id="waitlist-plan" name="plan">
+                <option value="launch">Free — tell me at launch</option>
+                <option value="pro">Pro</option>
+                <option value="family">Family</option>
+                <option value="document">Single document</option>
+                <option value="teams">Teams</option>
+              </select>
+            </label>
+            <label class="hp-field" aria-hidden="true">
+              Company <input name="company" type="text" tabindex="-1" autocomplete="off" />
+            </label>
+            <button class="scan-button" type="submit">
+              <span>Join the list</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+            <p id="waitlist-status" class="waitlist-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </section>
     </main>
 
+    <footer class="site-footer">
+      <p><b>Keenshield</b> — plain-English guidance, not legal advice.</p>
+      <nav aria-label="Legal">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="mailto:privacy@keenshield.app">Contact</a>
+      </nav>
+    </footer>
+
     <script src="/app.js" defer></script>
+    <script src="/home.js" defer></script>
   </body>
 </html>

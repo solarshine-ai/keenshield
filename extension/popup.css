@@ -1,0 +1,130 @@
+:root {
+  --ink: #20251f;
+  --paper: #f1ecdf;
+  --line: rgba(32, 37, 31, 0.18);
+  --moss: #52624b;
+  --cream: #faf7ee;
+  --red: #ad493e;
+  --yellow: #c08b31;
+  --green: #49775c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 340px;
+  margin: 0;
+  padding: 16px 18px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 13px/1.5 ui-monospace, "DM Mono", Menlo, monospace;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.brand {
+  font: 700 16px Georgia, serif;
+}
+
+header a {
+  color: var(--moss);
+  font-size: 11px;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.score {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  place-items: center;
+  border-radius: 12px 12px 26px 26px;
+  background: var(--green);
+  color: var(--cream);
+  font: 700 22px Georgia, serif;
+}
+
+.score[data-level="yellow"] { background: var(--yellow); }
+.score[data-level="red"] { background: var(--red); }
+
+.headline {
+  margin: 0;
+  font: 600 15px Georgia, serif;
+}
+
+.muted {
+  margin: 2px 0 0;
+  color: var(--moss);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+ul {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 8px 0 8px 16px;
+  border-top: 1px solid var(--line);
+  position: relative;
+}
+
+li::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  background: var(--moss);
+  transform: rotate(45deg);
+}
+
+.summary {
+  margin: 10px 0 0;
+}
+
+button,
+.upgrade {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#deep-view {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ink);
+}
+
+footer {
+  margin-top: 14px;
+  color: var(--moss);
+  font-size: 10px;
+}
