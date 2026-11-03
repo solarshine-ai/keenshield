@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb, uniqueIndex, index, boolean } from "drizzle-orm/pg-core";
 
 // One row per scored page, shared by every Keenshield user. A page is scored
 // once and everyone who visits it afterwards gets the stored result, so AI
@@ -29,8 +29,8 @@ export const siteScores = pgTable(
   (table) => [uniqueIndex("site_scores_page_key_idx").on(table.pageKey)]
 );
 
-// People who asked to hear about launch or a paid plan from the pricing
-// section. Payments aren't live yet; this is how demand gets measured first.
+// People who asked to hear about launch or a team plan from the pricing
+// section.
 export const waitlist = pgTable(
   "waitlist",
   {
@@ -41,3 +41,58 @@ export const waitlist = pgTable(
   },
   (table) => [uniqueIndex("waitlist_email_idx").on(table.email)]
 );
+
+// ── Billing ─────────────────────────────────────────────────
+// What each person has paid for, keyed by the email they sign in with. The
+// Stripe webhook writes these rows; the scanner reads them. A row can exist
+// before the person has an account: buying first and signing up later with
+// the same email still finds the purchase.
+export const accounts = pgTable(
+  "accounts",
+  {
+    // Lowercased, trimmed email. Matches the Netlify Identity user's email.
+    email: text().primaryKey(),
+    // "pro" or "family", or null for no subscription.
+    plan: text(),
+    // "month" or "year".
+    planInterval: text("plan_interval"),
+    planActive: boolean("plan_active").notNull().default(false),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    // Single document reviews bought and not yet used or refunded.
+    documentCredits: integer("document_credits").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull()
+  },
+  (table) => [
+    index("accounts_stripe_customer_idx").on(table.stripeCustomerId),
+    index("accounts_stripe_subscription_idx").on(table.stripeSubscriptionId)
+  ]
+);
+
+// One row per single-document purchase, so a refund can find and remove
+// exactly the credit that payment bought.
+export const creditPurchases = pgTable(
+  "credit_purchases",
+  {
+    id: serial().primaryKey(),
+    email: text().notNull(),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    credits: integer().notNull().default(1),
+    refunded: boolean().notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("credit_purchases_session_idx").on(table.stripeCheckoutSessionId),
+    index("credit_purchases_payment_intent_idx").on(table.stripePaymentIntentId)
+  ]
+);
+
+// Every Stripe event already handled. Stripe can deliver the same event more
+// than once; an event ID already in here is acknowledged and skipped.
+export const stripeEvents = pgTable("stripe_events", {
+  id: text().primaryKey(),
+  type: text().notNull(),
+  processedAt: timestamp("processed_at").defaultNow().notNull()
+});

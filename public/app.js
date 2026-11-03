@@ -21,6 +21,16 @@ const photoPreview = document.querySelector("#photo-preview");
 const photoThumb = document.querySelector("#photo-thumb");
 const photoMeta = document.querySelector("#photo-meta");
 const photoRemove = document.querySelector("#photo-remove");
+const modeInputs = form.querySelectorAll("input[name='mode']");
+const documentAccess = document.querySelector("#document-access");
+const characterLimit = document.querySelector("#character-limit");
+const clausesWrap = document.querySelector("#clauses-wrap");
+const clausesList = document.querySelector("#clauses");
+const creditsNote = document.querySelector("#credits-note");
+
+// A quick scan reads up to 8,000 characters. A document review reads a whole
+// lease or contract, so it gets more room. These match the server's limits.
+const TEXT_LIMITS = { page: 8000, document: 60000 };
 
 // Photos are resized in the browser before upload. 1,568px on the long edge
 // is the largest size the model gains any detail from, and shrinking a 12MP
@@ -43,9 +53,76 @@ const riskCopy = {
   unknown: { badge: "Unclear", title: "The scan needs another look" }
 };
 
-pageText.addEventListener("input", () => {
-  characterCount.textContent = Math.min(pageText.value.length, 8000).toLocaleString();
-});
+pageText.addEventListener("input", updateCharacterCount);
+
+function currentMode() {
+  const checked = form.querySelector("input[name='mode']:checked");
+  return checked && checked.value === "document" ? "document" : "page";
+}
+
+function updateCharacterCount() {
+  characterCount.textContent = Math.min(pageText.value.length, TEXT_LIMITS[currentMode()]).toLocaleString();
+}
+
+// ── Document review access ──────────────────────────────────
+// account.js keeps window.keenshieldAccount up to date and announces changes.
+function accountState() {
+  return window.keenshieldAccount || { user: null, account: null };
+}
+
+function documentAccessState() {
+  const { user, account } = accountState();
+  if (!user) return "signed-out";
+  if (account && account.plan) return "plan";
+  if (account && account.documentCredits > 0) return "credit";
+  return "none";
+}
+
+function openAccount() {
+  document.querySelector("#account-button").click();
+}
+
+function renderDocumentAccess() {
+  const isDocument = currentMode() === "document";
+  documentAccess.hidden = !isDocument;
+  if (!isDocument) return;
+
+  const { account } = accountState();
+  const access = documentAccessState();
+  documentAccess.dataset.tone = access === "signed-out" || access === "none" ? "warn" : "ok";
+  documentAccess.replaceChildren();
+
+  if (access === "signed-out") {
+    documentAccess.append("Sign in to run a document review. ");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "link-button";
+    button.textContent = "Sign in";
+    button.addEventListener("click", openAccount);
+    documentAccess.append(button);
+  } else if (access === "plan") {
+    documentAccess.append(`Included with your ${account.plan === "family" ? "Family" : "Pro"} plan.`);
+  } else if (access === "credit") {
+    const n = account.documentCredits;
+    documentAccess.append(`This uses 1 of your ${n} document review${n === 1 ? "" : "s"}.`);
+  } else {
+    documentAccess.append("You have no document reviews left. ");
+    const link = document.createElement("a");
+    link.href = "#pricing";
+    link.textContent = "Buy one for $1.99, or get Pro";
+    documentAccess.append(link);
+  }
+}
+
+function updateMode() {
+  characterLimit.textContent = TEXT_LIMITS[currentMode()].toLocaleString();
+  updateCharacterCount();
+  renderDocumentAccess();
+}
+
+for (const input of modeInputs) input.addEventListener("change", updateMode);
+window.addEventListener("keenshield:account", renderDocumentAccess);
+updateMode();
 
 pageUrl.addEventListener("blur", () => {
   pageUrl.value = normalizeHttpsUrl(pageUrl.value);
@@ -200,6 +277,20 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  const mode = currentMode();
+  if (mode === "document") {
+    const access = documentAccessState();
+    if (access === "signed-out") {
+      showError("Sign in to run a document review.");
+      openAccount();
+      return;
+    }
+    if (access === "none") {
+      showError("You have no document reviews left. Buy one for $1.99 in Pricing, or get Pro for unlimited reviews.");
+      return;
+    }
+  }
+
   setLoading(true);
 
   try {
@@ -210,6 +301,7 @@ form.addEventListener("submit", async (event) => {
         url,
         title: String(formData.get("title") || "").trim(),
         text,
+        ...(mode === "document" ? { mode } : {}),
         ...(selectedImage ? { image: selectedImage } : {})
       })
     });
@@ -241,7 +333,7 @@ resetButton.addEventListener("click", () => {
   // `form.reset()` does not reach the photo: it lives outside the form's own
   // fields, in module state and the preview.
   clearPhoto();
-  characterCount.textContent = "0";
+  updateMode();
   pageText.focus();
 });
 
@@ -263,6 +355,18 @@ function showError(message) {
 // internals. A status code also survives the backend rewording its payload,
 // which an equality check against the string did not.
 function scanErrorMessage(status, data) {
+  if (data && data.code === "signin-required") {
+    return "Sign in to run a document review.";
+  }
+
+  if (data && data.code === "no-credits") {
+    return "You have no document reviews left. Buy one for $1.99 in Pricing, or get Pro for unlimited reviews.";
+  }
+
+  if (status === 503) {
+    return "Your account couldn't be checked just now, so nothing was charged. Please try again shortly.";
+  }
+
   if (status === 402) {
     const used = Number(data.scansUsed);
     return Number.isFinite(used) && used > 0
@@ -314,6 +418,32 @@ function showResult(data) {
   });
 
   flagsWrap.hidden = flags.length === 0;
+
+  clausesList.replaceChildren();
+  const clauses = Array.isArray(data.clauses) ? data.clauses : [];
+  clauses.forEach((clause) => {
+    const item = document.createElement("li");
+    const quote = document.createElement("blockquote");
+    quote.textContent = clause.quote;
+    const meaning = document.createElement("p");
+    meaning.textContent = clause.meaning;
+    item.append(quote, meaning);
+    clausesList.append(item);
+  });
+  clausesWrap.hidden = clauses.length === 0;
+
+  const remaining = Number(data.credits_remaining);
+  creditsNote.hidden = !Number.isFinite(remaining);
+  if (Number.isFinite(remaining)) {
+    creditsNote.textContent = `1 document review used. ${remaining} left.`;
+    // Keep the account panel and the review option in step without a refetch.
+    const state = accountState();
+    if (state.account) {
+      state.account.documentCredits = remaining;
+      window.dispatchEvent(new CustomEvent("keenshield:account", { detail: state }));
+    }
+  }
+
   form.hidden = true;
   resultPanel.hidden = false;
 }
