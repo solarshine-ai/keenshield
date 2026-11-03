@@ -88,15 +88,6 @@ function billingOps(tx: Executor) {
       return rows.length;
     },
 
-    async endPlanByCustomer(customerId: string) {
-      const rows = await tx
-        .update(accounts)
-        .set({ planActive: false, updatedAt: new Date() })
-        .where(and(eq(accounts.stripeCustomerId, customerId), eq(accounts.planActive, true)))
-        .returning({ email: accounts.email });
-      return rows.length;
-    },
-
     async refundDocumentCredits(paymentIntentId: string) {
       const refunded = await tx
         .update(creditPurchases)

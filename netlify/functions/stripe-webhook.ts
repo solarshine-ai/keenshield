@@ -10,10 +10,17 @@
 // Required environment variables (never hardcode them):
 //   STRIPE_WEBHOOK_SECRET — the endpoint's signing secret (whsec_…)
 //   STRIPE_SECRET_KEY     — used to read what a checkout bought
+//   KEENSHIELD_PAYMENT_LINK_IDS — comma-separated plink_… IDs of Keenshield's
+//                           payment links; checkouts from any other link are ignored
 // ============================================================
 
 import { billingStore } from "../../db/billing.js";
-import { fetchCheckoutLineItems, handleStripeWebhook } from "../../lib/stripe-webhook.js";
+import {
+  fetchCheckoutLineItems,
+  findSubscriptionForCharge,
+  handleStripeWebhook,
+  parsePaymentLinkIds
+} from "../../lib/stripe-webhook.js";
 
 export default async (request: Request) => {
   if (request.method !== "POST") {
@@ -31,7 +38,10 @@ export default async (request: Request) => {
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
       store: billingStore,
       fetchLineItems: (sessionId: string) =>
-        fetchCheckoutLineItems(sessionId, { secretKey: process.env.STRIPE_SECRET_KEY })
+        fetchCheckoutLineItems(sessionId, { secretKey: process.env.STRIPE_SECRET_KEY }),
+      findSubscriptionForCharge: (charge: unknown) =>
+        findSubscriptionForCharge(charge, { secretKey: process.env.STRIPE_SECRET_KEY }),
+      paymentLinkIds: parsePaymentLinkIds(process.env.KEENSHIELD_PAYMENT_LINK_IDS)
     });
 
     // Log and reply with what changed, but not the buyer's email: Stripe keeps

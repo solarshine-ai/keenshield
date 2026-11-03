@@ -28,6 +28,8 @@ waitlist.
      webhook to read what a checkout bought
    - `STRIPE_WEBHOOK_SECRET` = the signing secret (`whsec_…`) Stripe shows for
      the webhook endpoint below
+   - `KEENSHIELD_PAYMENT_LINK_IDS` = the IDs (`plink_…`) of Keenshield's five
+     payment links, comma-separated. Checkouts from any other link are ignored
 3. Redeploy after saving the variables.
 
 No `ANTHROPIC_BASE_URL` setting is required. When Netlify AI Gateway supplies one,
@@ -171,7 +173,7 @@ email:
 | Plan | Price | What it unlocks |
 |------|-------|-----------------|
 | Pro | $4.99 / month or $39.99 / year | No free scan limit, unlimited document reviews |
-| Family | $5.99 / month or $59.99 / year | Same as Pro for the buyer's account |
+| Family | $5.99 / month or $59.99 / year | Same as Pro for the buyer's account (member invites coming soon) |
 | Single document review | $1.99 once | One credit, spent by one document review |
 
 **Document review mode.** The scanner takes `"mode": "document"` for a full
@@ -198,7 +200,15 @@ minutes old gets `400` before anything else happens.
 | `checkout.session.completed` | Turns on Pro or Family, or adds a document credit, for the buyer's email |
 | `checkout.session.async_payment_succeeded` | The same, for payments that settle later (bank debits) |
 | `customer.subscription.deleted` | Turns that subscription's plan off |
-| `charge.refunded` (full refunds only) | Removes the credit that payment bought or, for a subscription payment, turns the plan off |
+| `charge.refunded` (full refunds only) | Removes the credit that payment bought or, for a payment on a Keenshield subscription, turns that plan off |
+
+The Stripe account may be shared with other businesses, so a checkout is only
+acted on when its `payment_link` is in `KEENSHIELD_PAYMENT_LINK_IDS`. Others
+are acknowledged with `200` and left alone. If the variable is unset, checkout
+events get `500` so Stripe retries them once it is set. Cancellations and
+refunds only ever match records the webhook created: a subscription refund is
+traced to its subscription through the Stripe API, never matched by customer,
+so another business refunding the same customer changes nothing here.
 
 What a checkout bought is read from its line items through the Stripe API
 (using `STRIPE_SECRET_KEY`), matched by price and billing interval and then by

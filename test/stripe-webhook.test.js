@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   classifyCheckout,
   fetchCheckoutLineItems,
+  findSubscriptionForCharge,
   handleStripeWebhook,
+  parsePaymentLinkIds,
   signStripePayload,
   verifyStripeSignature
 } from "../lib/stripe-webhook.js";
@@ -67,16 +69,6 @@ function createMemoryStore() {
       }
       return changed;
     },
-    async endPlanByCustomer(customerId) {
-      let changed = 0;
-      for (const a of state.accounts.values()) {
-        if (a.stripeCustomerId === customerId && a.planActive) {
-          a.planActive = false;
-          changed++;
-        }
-      }
-      return changed;
-    },
     async refundDocumentCredits(paymentIntentId) {
       let removed = 0;
       for (const p of state.purchases) {
@@ -111,6 +103,24 @@ function createMemoryStore() {
   };
 }
 
+// The five Keenshield payment links, as configured in KEENSHIELD_PAYMENT_LINK_IDS.
+const PAYMENT_LINKS = {
+  pro_year: "plink_pro_year",
+  pro_month: "plink_pro_month",
+  family_year: "plink_family_year",
+  family_month: "plink_family_month",
+  document: "plink_document"
+};
+const ALLOWED_LINKS = Object.values(PAYMENT_LINKS);
+
+function paymentLinkFor(sessionId) {
+  if (sessionId.startsWith("cs_doc")) return PAYMENT_LINKS.document;
+  if (sessionId.startsWith("cs_pro_year")) return PAYMENT_LINKS.pro_year;
+  if (sessionId.startsWith("cs_family_month")) return PAYMENT_LINKS.family_month;
+  if (sessionId.startsWith("cs_family_year")) return PAYMENT_LINKS.family_year;
+  return PAYMENT_LINKS.pro_month;
+}
+
 const LINE_ITEMS = {
   cs_pro_month: [{ quantity: 1, description: "Keenshield Pro", price: { unit_amount: 499, recurring: { interval: "month" } } }],
   cs_pro_year: [{ quantity: 1, description: "Keenshield Pro", price: { unit_amount: 3999, recurring: { interval: "year" } } }],
@@ -134,13 +144,14 @@ function checkoutEvent(id, sessionId, overrides = {}) {
         subscription: isDoc ? null : `sub_${sessionId}`,
         payment_intent: isDoc ? `pi_${sessionId}` : null,
         customer_details: { email: "Buyer@Example.com " },
+        payment_link: paymentLinkFor(sessionId),
         ...overrides
       }
     }
   };
 }
 
-async function deliver(store, event, { secret = SECRET, header, fetchLineItems } = {}) {
+async function deliver(store, event, { secret = SECRET, header, fetchLineItems, findSubscriptionForCharge, paymentLinkIds = ALLOWED_LINKS } = {}) {
   const rawBody = JSON.stringify(event);
   return handleStripeWebhook({
     rawBody,
@@ -148,6 +159,8 @@ async function deliver(store, event, { secret = SECRET, header, fetchLineItems }
     webhookSecret: SECRET,
     store,
     fetchLineItems: fetchLineItems || (async (sessionId) => LINE_ITEMS[sessionId] || []),
+    findSubscriptionForCharge: findSubscriptionForCharge || (async () => null),
+    paymentLinkIds,
     now: NOW,
     log: silentLog
   });
@@ -249,6 +262,7 @@ describe("handleStripeWebhook: rejecting bad requests", () => {
       webhookSecret: undefined,
       store,
       fetchLineItems: async () => [],
+      paymentLinkIds: ALLOWED_LINKS,
       now: NOW,
       log: silentLog
     });
@@ -448,7 +462,7 @@ describe("handleStripeWebhook: turning access off", () => {
       id: "evt_2",
       type: "charge.refunded",
       data: { object: { id: "ch_2", refunded: true, payment_intent: "pi_invoice", customer: "cus_123" } }
-    });
+    }, { findSubscriptionForCharge: async (charge) => (charge.id === "ch_2" ? "sub_cs_pro_year" : null) });
     assert.equal(result.body.applied, "plan-ended");
     assert.equal(store.state.accounts.get("buyer@example.com").planActive, false);
   });
@@ -514,5 +528,161 @@ describe("entitlements", () => {
   test("signed out or no row means no access", () => {
     assert.equal(documentAccessFor(null), "none");
     assert.deepEqual(accountSummary("a@b.co", null), { email: "a@b.co", plan: null, planInterval: null, documentCredits: 0 });
+  });
+});
+
+describe("handleStripeWebhook: only Keenshield's payment links", () => {
+  for (const [name, sessionId] of [
+    ["Pro yearly", "cs_pro_year"],
+    ["Pro monthly", "cs_pro_month"],
+    ["Family yearly", "cs_family_year"],
+    ["Family monthly", "cs_family_month"],
+    ["single document", "cs_doc"]
+  ]) {
+    test(`acts on a checkout from the ${name} link`, async () => {
+      const store = createMemoryStore();
+      const result = await deliver(store, checkoutEvent("evt_1", sessionId));
+      assert.notEqual(result.body.ignored, true);
+      assert.ok(store.state.accounts.get("buyer@example.com"));
+    });
+  }
+
+  test("ignores a checkout from another business's payment link", async () => {
+    const store = createMemoryStore();
+    let fetched = false;
+    const result = await deliver(store, checkoutEvent("evt_1", "cs_pro_month", { payment_link: "plink_other_business" }), {
+      fetchLineItems: async () => {
+        fetched = true;
+        return LINE_ITEMS.cs_pro_month;
+      }
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.ignored, true);
+    assert.equal(result.body.reason, "not-keenshield-payment-link");
+    assert.equal(fetched, false, "no Stripe API call for someone else's checkout");
+    assert.equal(store.state.accounts.size, 0);
+    assert.equal(store.state.events.size, 0);
+  });
+
+  test("ignores a checkout made without a payment link", async () => {
+    const store = createMemoryStore();
+    const result = await deliver(store, checkoutEvent("evt_1", "cs_doc", { payment_link: null }));
+    assert.equal(result.body.ignored, true);
+    assert.equal(store.state.accounts.size, 0);
+  });
+
+  test("accepts an expanded payment_link object", async () => {
+    const store = createMemoryStore();
+    await deliver(store, checkoutEvent("evt_1", "cs_doc", { payment_link: { id: PAYMENT_LINKS.document, object: "payment_link" } }));
+    assert.equal(store.state.accounts.get("buyer@example.com").documentCredits, 1);
+  });
+
+  test("ignores another business's async payment too", async () => {
+    const store = createMemoryStore();
+    const event = checkoutEvent("evt_1", "cs_pro_month", { payment_link: "plink_other_business" });
+    event.type = "checkout.session.async_payment_succeeded";
+    const result = await deliver(store, event);
+    assert.equal(result.body.ignored, true);
+    assert.equal(store.state.accounts.size, 0);
+  });
+
+  test("returns 500 when KEENSHIELD_PAYMENT_LINK_IDS is missing, so Stripe retries and no sale is lost", async () => {
+    const store = createMemoryStore();
+    const event = checkoutEvent("evt_1", "cs_pro_month");
+    const result = await deliver(store, event, { paymentLinkIds: [] });
+    assert.equal(result.status, 500);
+    assert.equal(store.state.events.size, 0);
+
+    const retry = await deliver(store, event);
+    assert.equal(retry.status, 200);
+    assert.equal(store.state.accounts.get("buyer@example.com").planActive, true);
+  });
+
+  test("another business refunding the same customer leaves the Keenshield plan on", async () => {
+    const store = createMemoryStore();
+    await deliver(store, checkoutEvent("evt_1", "cs_pro_year"));
+    const result = await deliver(store, {
+      id: "evt_2",
+      type: "charge.refunded",
+      data: { object: { id: "ch_other", refunded: true, payment_intent: "pi_other", customer: "cus_123" } }
+    }, { findSubscriptionForCharge: async () => "sub_other_business" });
+    assert.equal(result.body.applied, "none");
+    assert.equal(store.state.accounts.get("buyer@example.com").planActive, true);
+  });
+
+  test("another business's refund that isn't a subscription payment changes nothing", async () => {
+    const store = createMemoryStore();
+    await deliver(store, checkoutEvent("evt_1", "cs_pro_year"));
+    await deliver(store, checkoutEvent("evt_2", "cs_doc"));
+    await deliver(store, {
+      id: "evt_3",
+      type: "charge.refunded",
+      data: { object: { id: "ch_other", refunded: true, payment_intent: "pi_other", customer: "cus_123" } }
+    });
+    const account = store.state.accounts.get("buyer@example.com");
+    assert.equal(account.planActive, true);
+    assert.equal(account.documentCredits, 1);
+  });
+
+  test("another business's subscription ending changes nothing", async () => {
+    const store = createMemoryStore();
+    await deliver(store, checkoutEvent("evt_1", "cs_family_month"));
+    await deliver(store, { id: "evt_2", type: "customer.subscription.deleted", data: { object: { id: "sub_other_business", customer: "cus_123" } } });
+    assert.equal(store.state.accounts.get("buyer@example.com").planActive, true);
+  });
+});
+
+describe("parsePaymentLinkIds", () => {
+  test("splits on commas and whitespace and drops blanks", () => {
+    assert.deepEqual(parsePaymentLinkIds(" plink_a, plink_b ,,plink_c\nplink_d "), ["plink_a", "plink_b", "plink_c", "plink_d"]);
+  });
+
+  test("an unset or empty variable allows nothing", () => {
+    assert.deepEqual(parsePaymentLinkIds(undefined), []);
+    assert.deepEqual(parsePaymentLinkIds(""), []);
+    assert.deepEqual(parsePaymentLinkIds(" , "), []);
+  });
+});
+
+describe("findSubscriptionForCharge", () => {
+  function stripeStub(routes) {
+    const calls = [];
+    const fetchImpl = async (url) => {
+      calls.push(url);
+      const path = url.replace("https://api.stripe.com/v1/", "");
+      const match = Object.keys(routes).find((prefix) => path.startsWith(prefix));
+      if (!match) return new Response("{}", { status: 404 });
+      return new Response(JSON.stringify(routes[match]), { status: 200 });
+    };
+    return { fetchImpl, calls };
+  }
+
+  test("older API: charge.invoice -> invoice.subscription", async () => {
+    const { fetchImpl } = stripeStub({ "invoices/in_1": { id: "in_1", subscription: "sub_1" } });
+    assert.equal(await findSubscriptionForCharge({ invoice: "in_1" }, { secretKey: "sk_test", fetchImpl }), "sub_1");
+  });
+
+  test("newer API: invoice payment -> invoice.parent.subscription_details", async () => {
+    const { fetchImpl, calls } = stripeStub({
+      "invoice_payments": { data: [{ invoice: "in_2" }] },
+      "invoices/in_2": { id: "in_2", parent: { subscription_details: { subscription: "sub_2" } } }
+    });
+    assert.equal(await findSubscriptionForCharge({ payment_intent: "pi_2" }, { secretKey: "sk_test", fetchImpl }), "sub_2");
+    assert.match(calls[0], /payment%5Bpayment_intent%5D=pi_2/);
+  });
+
+  test("a one-time payment with no invoice returns null", async () => {
+    const { fetchImpl } = stripeStub({ "invoice_payments": { data: [] } });
+    assert.equal(await findSubscriptionForCharge({ payment_intent: "pi_3" }, { secretKey: "sk_test", fetchImpl }), null);
+  });
+
+  test("a Stripe error throws so the event is retried", async () => {
+    await assert.rejects(
+      findSubscriptionForCharge({ invoice: "in_x" }, { secretKey: "sk_test", fetchImpl: async () => new Response("{}", { status: 500 }) })
+    );
+  });
+
+  test("throws when STRIPE_SECRET_KEY is missing", async () => {
+    await assert.rejects(findSubscriptionForCharge({ invoice: "in_x" }, {}), /STRIPE_SECRET_KEY/);
   });
 });
