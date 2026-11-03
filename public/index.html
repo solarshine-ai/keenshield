@@ -29,6 +29,7 @@
         <a href="#scanner">Scanner</a>
         <a href="#privacy">Privacy</a>
         <a href="#pricing">Pricing</a>
+        <button id="account-button" class="nav-account" type="button" aria-haspopup="dialog">Sign in</button>
         <a class="nav-cta" href="#get" data-plan="launch">Get Keenshield</a>
       </nav>
     </header>
@@ -131,6 +132,25 @@
         </div>
 
         <form id="scan-form" novalidate>
+          <fieldset class="scan-mode">
+            <legend>What are you scanning?</legend>
+            <label class="scan-mode-option">
+              <input type="radio" name="mode" value="page" checked />
+              <span>
+                <b>Quick scan</b>
+                <small>Free · a page or short agreement, up to 8,000 characters</small>
+              </span>
+            </label>
+            <label class="scan-mode-option">
+              <input type="radio" name="mode" value="document" />
+              <span>
+                <b>Document review</b>
+                <small>A full lease or contract, clause by clause, up to 60,000 characters · $1.99, or included with Pro and Family</small>
+              </span>
+            </label>
+          </fieldset>
+          <p id="document-access" class="document-access" hidden></p>
+
           <div class="field-row">
             <label class="field">
               <span>Page URL <small>optional</small></span>
@@ -150,7 +170,7 @@
               rows="10"
               placeholder="Paste the terms, checkout copy, or agreement here…"
             ></textarea>
-            <span class="field-meta"><b id="character-count">0</b> / 8,000 characters analyzed</span>
+            <span class="field-meta"><b id="character-count">0</b> / <span id="character-limit">8,000</span> characters analyzed</span>
           </label>
 
           <div class="field capture-field">
@@ -237,6 +257,11 @@
             <p>What stood out</p>
             <ul id="flags"></ul>
           </div>
+          <div id="clauses-wrap" class="clauses-wrap" hidden>
+            <p>Clause by clause</p>
+            <ol id="clauses"></ol>
+          </div>
+          <p id="credits-note" class="credits-note" hidden></p>
           <button id="reset-button" class="reset-button" type="button">Scan another page</button>
         </article>
       </section>
@@ -309,52 +334,74 @@
               <li>The top reason for each score</li>
               <li>5 deep scans to try the full breakdown</li>
             </ul>
-            <a class="plan-button" href="#get" data-plan="launch">Get notified at launch</a>
+            <a class="plan-button" href="#scanner">Try a free scan</a>
           </article>
 
           <article class="plan plan-featured">
             <p class="plan-tag">Most popular</p>
             <h3>Pro</h3>
             <p class="price">
-              <b data-price-yearly="$39" data-price-monthly="$4.99">$39</b>
-              <span data-per-yearly="/ year — about $3.25 a month" data-per-monthly="/ month">/ year — about $3.25 a month</span>
+              <b data-price-yearly="$39.99" data-price-monthly="$4.99">$39.99</b>
+              <span data-per-yearly="/ year — about $3.33 a month" data-per-monthly="/ month">/ year — about $3.33 a month</span>
             </p>
             <ul>
               <li>Every reason, the exact clause, and what it means for you</li>
-              <li>Unlimited deep scans of any page</li>
+              <li>Unlimited deep scans and document reviews on keenshield.app</li>
+              <li>Extension sign-in coming soon. Until then, the extension keeps its 5 free deep scans</li>
               <li>Photo and document scanner for leases and contracts</li>
               <li>History of what you've agreed to and subscribed to</li>
               <li>Alerts when a site you use changes its terms</li>
             </ul>
-            <a class="plan-button" href="#get" data-plan="pro">Join the Pro list</a>
+            <a
+              class="plan-button"
+              data-checkout="pro"
+              href="https://buy.stripe.com/3cI8wPbgE66VbUO5Bl4AU08"
+              data-checkout-yearly="https://buy.stripe.com/3cI8wPbgE66VbUO5Bl4AU08"
+              data-checkout-monthly="https://buy.stripe.com/dRm4gzacA8f34sm9RB4AU09"
+              data-label-yearly="Buy Pro — $39.99 a year"
+              data-label-monthly="Buy Pro — $4.99 a month"
+            >Buy Pro — $39.99 a year</a>
           </article>
 
           <article class="plan">
             <h3>Family</h3>
             <p class="price">
-              <b data-price-yearly="$59" data-price-monthly="$5.99">$59</b>
+              <b data-price-yearly="$59.99" data-price-monthly="$5.99">$59.99</b>
               <span data-per-yearly="/ year for up to 5 people" data-per-monthly="/ month for up to 5 people">/ year for up to 5 people</span>
             </p>
             <ul>
               <li>Everything in Pro, for everyone in the family</li>
               <li>Look out for parents and grandparents — the people scammers target most</li>
             </ul>
-            <a class="plan-button" href="#get" data-plan="family">Join the Family list</a>
+            <a
+              class="plan-button"
+              data-checkout="family"
+              href="https://buy.stripe.com/9B600j84s3YN6AugfZ4AU0a"
+              data-checkout-yearly="https://buy.stripe.com/9B600j84s3YN6AugfZ4AU0a"
+              data-checkout-monthly="https://buy.stripe.com/dRm3cvesQbrfaQK3td4AU0b"
+              data-label-yearly="Buy Family — $59.99 a year"
+              data-label-monthly="Buy Family — $5.99 a month"
+            >Buy Family — $59.99 a year</a>
           </article>
         </div>
 
         <div class="pricing-extras">
-          <p><b>One document, no subscription — $2.99.</b> Review a single lease or contract with the full breakdown.
-            <a href="#get" data-plan="document">Tell me when it's available</a></p>
+          <p><b>One document, no subscription — $1.99.</b> Review a single lease or contract with the full breakdown, clause by clause.
+            <a data-checkout="document" href="https://buy.stripe.com/4gMcN584sgLz3oigfZ4AU0c">Buy a document review — $1.99</a></p>
           <p><b>Using Keenshield at work?</b> Team plans with an admin view are coming.
             <a href="#get" data-plan="teams">Talk to us about teams</a></p>
         </div>
+
+        <p class="checkout-note">
+          Payments are handled by Stripe. Sign in before you buy, or check out with the same email you'll
+          sign in with. That email is how your purchase finds your account.
+        </p>
 
         <form id="waitlist-form" class="waitlist" novalidate>
           <div id="get" class="waitlist-anchor"></div>
           <div class="waitlist-copy">
             <h3>Be first in line</h3>
-            <p>Keenshield is coming to the Chrome Web Store. Paid plans aren't open yet — leave your email and we'll tell you when they are. Nothing else.</p>
+            <p>Keenshield is coming to the Chrome Web Store. Leave your email and we'll tell you when the extension is ready, or when team plans open. Nothing else.</p>
           </div>
           <div class="waitlist-fields">
             <label class="field">
@@ -364,10 +411,7 @@
             <label class="field">
               <span>Interested in</span>
               <select id="waitlist-plan" name="plan">
-                <option value="launch">Free — tell me at launch</option>
-                <option value="pro">Pro</option>
-                <option value="family">Family</option>
-                <option value="document">Single document</option>
+                <option value="launch">The extension — tell me at launch</option>
                 <option value="teams">Teams</option>
               </select>
             </label>
@@ -393,6 +437,71 @@
       </nav>
     </footer>
 
+    <dialog id="account-dialog" class="account-dialog" aria-labelledby="account-title">
+      <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+
+      <section id="account-signed-out">
+        <p class="step-label" id="account-context">Your account</p>
+        <h2 id="account-title">Sign in to Keenshield</h2>
+        <p id="account-checkout-note" class="account-note" hidden>
+          Sign in or create an account first, so your purchase lands on it.
+        </p>
+
+        <div class="account-tabs" role="tablist" aria-label="Sign in or create an account">
+          <button type="button" role="tab" data-auth-tab="login" aria-selected="true">Sign in</button>
+          <button type="button" role="tab" data-auth-tab="signup" aria-selected="false">Create account</button>
+        </div>
+
+        <form id="auth-form" class="auth-form" novalidate>
+          <label class="field">
+            <span>Email</span>
+            <input id="auth-email" name="email" type="email" autocomplete="email" required />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" required />
+          </label>
+          <button class="scan-button" type="submit">
+            <span id="auth-submit-label">Sign in</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+          <button id="forgot-password" class="link-button" type="button">Forgot your password?</button>
+        </form>
+
+        <form id="reset-form" class="auth-form" novalidate hidden>
+          <p class="account-note">Choose a new password for your account.</p>
+          <label class="field">
+            <span>New password</span>
+            <input id="reset-password" name="password" type="password" autocomplete="new-password" minlength="8" required />
+          </label>
+          <button class="scan-button" type="submit"><span>Save new password</span></button>
+        </form>
+
+        <p id="auth-status" class="waitlist-status" role="status" aria-live="polite"></p>
+        <p id="account-skip" class="account-skip" hidden>
+          <a id="account-skip-link" href="#">Skip — I'll check out now and sign up later with the same email</a>
+        </p>
+      </section>
+
+      <section id="account-signed-in" hidden>
+        <p class="step-label">Your account</p>
+        <h2 id="account-email"></h2>
+        <dl class="account-facts">
+          <div><dt>Plan</dt><dd id="account-plan">Free</dd></div>
+          <div><dt>Document reviews</dt><dd id="account-credits">0</dd></div>
+        </dl>
+        <p id="account-thanks" class="account-note" hidden>
+          Thanks for your purchase. It can take a few seconds to show up here.
+        </p>
+        <p class="account-note">To change or cancel a plan, email <a href="mailto:privacy@keenshield.app">privacy@keenshield.app</a> from this address.</p>
+        <div class="account-actions">
+          <a class="plan-button" href="#pricing" data-close-dialog>See plans</a>
+          <button id="sign-out" class="plan-button" type="button">Sign out</button>
+        </div>
+      </section>
+    </dialog>
+
+    <script type="module" src="/account.js"></script>
     <script src="/app.js" defer></script>
     <script src="/home.js" defer></script>
   </body>

@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "vendor:identity": "esbuild node_modules/@netlify/identity/dist/main.js --bundle --format=esm --platform=browser --minify --legal-comments=eof --outfile=public/vendor/netlify-identity.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",
     "@netlify/database": "^2.0.1",
+    "@netlify/identity": "^2.0.0",
     "drizzle-orm": "^1.0.0-beta.22"
   },
   "devDependencies": {

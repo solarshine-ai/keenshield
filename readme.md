@@ -24,7 +24,11 @@ waitlist.
      has to ship in the extension's code.
    - `KEENSHIELD_OWNER_TOKEN` = a long random string, for your own unlimited use
      (optional — leave it unset and nobody gets an exemption)
-3. Redeploy after saving the variable.
+   - `STRIPE_SECRET_KEY` = your Stripe secret key (`sk_live_…`), used by the
+     webhook to read what a checkout bought
+   - `STRIPE_WEBHOOK_SECRET` = the signing secret (`whsec_…`) Stripe shows for
+     the webhook endpoint below
+3. Redeploy after saving the variables.
 
 No `ANTHROPIC_BASE_URL` setting is required. When Netlify AI Gateway supplies one,
 the function uses it automatically; otherwise it connects to Anthropic's standard
@@ -159,9 +163,63 @@ The extension is not in this repository. The exact change it needs in order to
 send an `installId` is written up in
 [`docs/extension-install-id.md`](docs/extension-install-id.md).
 
+## Accounts and paid plans
+People sign in on keenshield.app with Netlify Identity. What each person has
+paid for lives in the `accounts` table in Netlify Database, keyed by their
+email:
+
+| Plan | Price | What it unlocks |
+|------|-------|-----------------|
+| Pro | $4.99 / month or $39.99 / year | No free scan limit, unlimited document reviews |
+| Family | $5.99 / month or $59.99 / year | Same as Pro for the buyer's account |
+| Single document review | $1.99 once | One credit, spent by one document review |
+
+**Document review mode.** The scanner takes `"mode": "document"` for a full
+lease or contract: up to 60,000 characters, reviewed clause by clause, with a
+`clauses` array in the result. It needs a signed-in account (`401` with
+`code: "signin-required"` otherwise). An active Pro or Family plan covers it.
+Without one, it spends one credit (`402` with `code: "no-credits"` when there
+are none). The credit is spent before the AI call so two reviews can't share
+one, and handed back if the review fails.
+
+A signed-in subscriber also skips the per-install free scan limit.
+
+`GET /api/account` returns the signed-in person's plan and remaining credits
+for the website.
+
+### Stripe webhook (`/api/stripe-webhook`)
+Stripe calls `https://keenshield.app/api/stripe-webhook` after each billing
+event. Every request must carry a valid `Stripe-Signature` made with
+`STRIPE_WEBHOOK_SECRET`, and anything unsigned, wrongly signed or more than 5
+minutes old gets `400` before anything else happens.
+
+| Event | Effect |
+|-------|--------|
+| `checkout.session.completed` | Turns on Pro or Family, or adds a document credit, for the buyer's email |
+| `checkout.session.async_payment_succeeded` | The same, for payments that settle later (bank debits) |
+| `customer.subscription.deleted` | Turns that subscription's plan off |
+| `charge.refunded` (full refunds only) | Removes the credit that payment bought or, for a subscription payment, turns the plan off |
+
+What a checkout bought is read from its line items through the Stripe API
+(using `STRIPE_SECRET_KEY`), matched by price and billing interval and then by
+product name. Each event ID is stored in `stripe_events`, in the same
+transaction as its effect, so a repeated delivery changes nothing. Credit
+purchases are also unique per checkout session. If processing fails, nothing
+is saved and the `500` makes Stripe retry.
+
+The buy buttons pass the signed-in email to Stripe as `prefilled_email`.
+Someone who buys without an account can sign up later with the same email,
+and the purchase is already waiting on it.
+
+The browser copy of `@netlify/identity` in `public/vendor/` is generated with
+`npm run vendor:identity`. Re-run it after upgrading the package.
+
 ## Not done yet (intentionally — for later)
-- **Accounts / paid tier**: `userToken` now lifts the limits for one value — the owner token — and is otherwise ignored. Real accounts are still missing: a single shared secret cannot be revoked per user or attributed to a subscriber, so that is what should eventually lift the 5-scan limit for paying users.
-- **Install IDs are self-reported**: an install ID is just a string the client sends. Tying scans to a real account is the only way to make the free-tier limit hold.
+- **Family members**: Family currently unlocks the buyer's own account. Adding
+  up to four more people to the plan still needs to be built.
+- **Extension sign-in**: the extension stays on 5 free deep scans. Paid plans
+  apply on keenshield.app.
+- **Install IDs are self-reported**: an install ID is just a string the client sends, so the free-tier limit only holds for ordinary extension users.
 
 ## The shield number (`/api/site-score`)
 The endpoint behind the number on the extension's icon. It applies the same
@@ -187,8 +245,8 @@ number. The extension side is written up in
 [`docs/extension-shield-score.md`](docs/extension-shield-score.md).
 
 ## Waitlist (`/api/waitlist`)
-The pricing section's form saves `{ email, plan }` to the `waitlist` table so
-demand for each plan can be measured before payments go live. Plans are
+The waitlist form saves `{ email, plan }` to the `waitlist` table, for people
+waiting on the extension's launch or on team plans. Plans are
 `launch`, `pro`, `family`, `document` and `teams`. Only Keenshield's own site
 can post to it, with a per-IP limit and a honeypot field against bots.
 
@@ -197,7 +255,13 @@ can post to it, with a per-IP limit and a honeypot field against bots.
   the scanner (`app.js`), and the privacy policy and terms pages.
 - `netlify/functions/keenshield-scan.js` is the deep scan (`claude-sonnet-5-5`).
 - `netlify/functions/site-score.ts` is the shield number.
-- `netlify/functions/waitlist.ts` is the launch and pricing waitlist.
+- `netlify/functions/waitlist.ts` is the launch and teams waitlist.
+- `netlify/functions/stripe-webhook.ts` turns plans and credits on and off.
+  Its logic is in `lib/stripe-webhook.js`, tested in `test/stripe-webhook.test.js`.
+- `netlify/functions/account.ts` reports the signed-in person's plan.
+- `db/billing.ts` reads and writes plans and credits. `lib/entitlements.js`
+  decides what an account can do.
+- `public/account.js` is sign-in and the buy buttons.
 - `lib/gate.js` holds the shared rules for who may call the endpoints and how
   fast.
 - `db/schema.ts` is the database schema. Migrations in

@@ -1,4 +1,5 @@
 // Keenshield homepage: the shield demo, the pricing toggle and the waitlist.
+// Sign-in and the buy buttons live in account.js.
 // The scanner itself lives in app.js.
 
 // ── Shield demo ──────────────────────────────────────────────
@@ -113,6 +114,11 @@ function setBilling(period) {
   }
   for (const el of document.querySelectorAll("[data-per-yearly]")) {
     el.textContent = el.dataset[period === "yearly" ? "perYearly" : "perMonthly"];
+  }
+  // Buy buttons point at the Stripe payment link for the chosen period.
+  for (const el of document.querySelectorAll("[data-checkout-yearly]")) {
+    el.href = el.dataset[period === "yearly" ? "checkoutYearly" : "checkoutMonthly"];
+    el.textContent = el.dataset[period === "yearly" ? "labelYearly" : "labelMonthly"];
   }
 }
 
