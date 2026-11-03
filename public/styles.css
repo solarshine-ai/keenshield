@@ -1729,3 +1729,14 @@ select:focus {
     border-left: 0;
   }
 }
+
+.coming-soon {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  white-space: nowrap;
+}
