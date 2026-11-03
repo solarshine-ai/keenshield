@@ -2,6 +2,9 @@
   "name": "keenshield",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",
     "@netlify/database": "^2.0.1",
