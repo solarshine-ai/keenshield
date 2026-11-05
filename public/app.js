@@ -1,7 +1,17 @@
+// Keenshield's website scanner: one text box, an optional photo, one Scan
+// button, and a plain-language result.
+//
+// The website gives 3 free scans, counted on the server per signed-in account
+// or, for signed-out visitors, per browser (the random ID below). After that a
+// scan needs Pro or a $1.99 scan credit. account.js keeps
+// window.keenshieldAccount up to date and announces changes.
+
 const form = document.querySelector("#scan-form");
-const pageUrl = document.querySelector("#url");
 const pageText = document.querySelector("#text");
 const characterCount = document.querySelector("#character-count");
+const characterLimit = document.querySelector("#character-limit");
+const characterUpsell = document.querySelector("#character-upsell");
+const scanAllowance = document.querySelector("#scan-allowance");
 const formError = document.querySelector("#form-error");
 const loadingPanel = document.querySelector("#loading");
 const resultPanel = document.querySelector("#result");
@@ -10,6 +20,7 @@ const resultTitle = document.querySelector("#result-title");
 const resultSummary = document.querySelector("#result-summary");
 const flagsWrap = document.querySelector("#flags-wrap");
 const flagsList = document.querySelector("#flags");
+const scanNote = document.querySelector("#scan-note");
 const resetButton = document.querySelector("#reset-button");
 const submitButton = form.querySelector("button[type='submit']");
 const cameraButton = document.querySelector("#camera-button");
@@ -21,16 +32,18 @@ const photoPreview = document.querySelector("#photo-preview");
 const photoThumb = document.querySelector("#photo-thumb");
 const photoMeta = document.querySelector("#photo-meta");
 const photoRemove = document.querySelector("#photo-remove");
-const modeInputs = form.querySelectorAll("input[name='mode']");
-const documentAccess = document.querySelector("#document-access");
-const characterLimit = document.querySelector("#character-limit");
-const clausesWrap = document.querySelector("#clauses-wrap");
-const clausesList = document.querySelector("#clauses");
-const creditsNote = document.querySelector("#credits-note");
 
-// A quick scan reads up to 8,000 characters. A document review reads a whole
-// lease or contract, so it gets more room. These match the server's limits.
-const TEXT_LIMITS = { page: 8000, document: 60000 };
+const SCAN_ENDPOINT = "/.netlify/functions/keenshield-scan";
+
+// A free scan reads up to 8,000 characters. Pro and a $1.99 scan credit read
+// a whole lease or contract. These match the server's limits.
+const FREE_TEXT_LIMIT = 8000;
+const FULL_TEXT_LIMIT = 60000;
+
+// The Stripe links the "out of free scans" message points at. The same links
+// are on the pricing cards; account.js handles any a[data-checkout] click.
+const SINGLE_SCAN_URL = "https://buy.stripe.com/8x214g8Ay7ZY0dCcD03AY01";
+const PRO_YEARLY_URL = "https://buy.stripe.com/5kQfZa6sqbca7G432q3AY07";
 
 // Photos are resized in the browser before upload. 1,568px on the long edge
 // is the largest size the model gains any detail from, and shrinking a 12MP
@@ -46,87 +59,130 @@ const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 // The prepared photo, as base64 ready for the scan request, or null.
 let selectedImage = null;
 
+// What the server last said about free scans: { free_scans, free_scans_left, unlimited }.
+let allowance = null;
+
 const riskCopy = {
   green: { badge: "Clear", title: "Nothing concerning found" },
-  yellow: { badge: "Worth knowing", title: "Pause and read this part" },
+  yellow: { badge: "Worth knowing", title: "Fine to use, but know this first" },
   red: { badge: "High concern", title: "Think twice before continuing" },
   unknown: { badge: "Unclear", title: "The scan needs another look" }
 };
 
-pageText.addEventListener("input", updateCharacterCount);
-
-function currentMode() {
-  const checked = form.querySelector("input[name='mode']:checked");
-  return checked && checked.value === "document" ? "document" : "page";
+// ── Free scans ──────────────────────────────────────────────
+// A random ID kept in this browser, so signed-out visitors get their 3 free
+// scans per browser. It identifies nothing else.
+function browserId() {
+  const KEY = "keenshield-browser-id";
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    // Storage blocked: the server falls back to counting by network address.
+    return "";
+  }
 }
 
-function updateCharacterCount() {
-  characterCount.textContent = Math.min(pageText.value.length, TEXT_LIMITS[currentMode()]).toLocaleString();
-}
-
-// ── Document review access ──────────────────────────────────
-// account.js keeps window.keenshieldAccount up to date and announces changes.
 function accountState() {
   return window.keenshieldAccount || { user: null, account: null };
 }
 
-function documentAccessState() {
-  const { user, account } = accountState();
-  if (!user) return "signed-out";
-  if (account && account.plan) return "plan";
-  if (account && account.documentCredits > 0) return "credit";
-  return "none";
-}
-
-function openAccount() {
-  document.querySelector("#account-button").click();
-}
-
-function renderDocumentAccess() {
-  const isDocument = currentMode() === "document";
-  documentAccess.hidden = !isDocument;
-  if (!isDocument) return;
-
+function scanCredits() {
   const { account } = accountState();
-  const access = documentAccessState();
-  documentAccess.dataset.tone = access === "signed-out" || access === "none" ? "warn" : "ok";
-  documentAccess.replaceChildren();
-
-  if (access === "signed-out") {
-    documentAccess.append("Sign in to run a document review. ");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "link-button";
-    button.textContent = "Sign in";
-    button.addEventListener("click", openAccount);
-    documentAccess.append(button);
-  } else if (access === "plan") {
-    documentAccess.append(`Included with your ${account.plan === "family" ? "Family" : "Pro"} plan.`);
-  } else if (access === "credit") {
-    const n = account.documentCredits;
-    documentAccess.append(`This uses 1 of your ${n} document review${n === 1 ? "" : "s"}.`);
-  } else {
-    documentAccess.append("You have no document reviews left. ");
-    const link = document.createElement("a");
-    link.href = "#pricing";
-    link.textContent = "Buy one for $1.99, or get Pro";
-    documentAccess.append(link);
-  }
+  return account ? Number(account.scanCredits) || 0 : 0;
 }
 
-function updateMode() {
-  characterLimit.textContent = TEXT_LIMITS[currentMode()].toLocaleString();
+function hasPro() {
+  const { account } = accountState();
+  return Boolean((account && account.plan) || (allowance && allowance.unlimited));
+}
+
+function freeScansLeft() {
+  return allowance ? Number(allowance.free_scans_left) || 0 : null;
+}
+
+// The next scan reads the full length when it's covered by Pro or by a
+// credit (free scans used up and a credit to spend).
+function nextScanIsFull() {
+  return hasPro() || (freeScansLeft() === 0 && scanCredits() > 0);
+}
+
+function textLimit() {
+  return nextScanIsFull() ? FULL_TEXT_LIMIT : FREE_TEXT_LIMIT;
+}
+
+function updateCharacterCount() {
+  const limit = textLimit();
+  characterLimit.textContent = limit.toLocaleString();
+  characterUpsell.hidden = limit === FULL_TEXT_LIMIT;
+  characterCount.textContent = Math.min(pageText.value.length, limit).toLocaleString();
+}
+
+function renderAllowance() {
   updateCharacterCount();
-  renderDocumentAccess();
+  const left = freeScansLeft();
+  scanAllowance.replaceChildren();
+  scanAllowance.dataset.tone = "ok";
+
+  if (hasPro()) {
+    scanAllowance.append("Pro: unlimited scans, up to 60,000 characters each.");
+  } else if (left === null) {
+    scanAllowance.hidden = true;
+    return;
+  } else if (left > 0) {
+    scanAllowance.append(`${left} of ${allowance.free_scans} free scans left.`);
+  } else if (scanCredits() > 0) {
+    const n = scanCredits();
+    scanAllowance.append(`This scan uses 1 of your ${n} scan credit${n === 1 ? "" : "s"}.`);
+  } else {
+    scanAllowance.dataset.tone = "warn";
+    scanAllowance.append(outOfFreeScansMessage());
+  }
+  scanAllowance.hidden = false;
 }
 
-for (const input of modeInputs) input.addEventListener("change", updateMode);
-window.addEventListener("keenshield:account", renderDocumentAccess);
-updateMode();
+// "You've used your 3 free scans. Get one more scan for $1.99 or go Pro for unlimited."
+function outOfFreeScansMessage() {
+  const total = (allowance && allowance.free_scans) || 3;
+  const fragment = document.createDocumentFragment();
 
-pageUrl.addEventListener("blur", () => {
-  pageUrl.value = normalizeHttpsUrl(pageUrl.value);
-});
+  const single = document.createElement("a");
+  single.href = SINGLE_SCAN_URL;
+  single.dataset.checkout = "document";
+  single.textContent = "Get one more scan for $1.99";
+
+  const pro = document.createElement("a");
+  pro.href = PRO_YEARLY_URL;
+  pro.dataset.checkout = "pro";
+  pro.textContent = "go Pro for unlimited";
+
+  fragment.append(`You've used your ${total} free scans. `, single, " or ", pro, ".");
+  return fragment;
+}
+
+async function refreshAllowance() {
+  try {
+    const response = await fetch(SCAN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ action: "allowance", browserId: browserId() })
+    });
+    if (response.ok) allowance = await response.json();
+  } catch {
+    // Not knowing the count only hides the note; the server still decides.
+  }
+  renderAllowance();
+}
+
+pageText.addEventListener("input", updateCharacterCount);
+// Signing in or out changes whose free scans count, and buying changes credits.
+window.addEventListener("keenshield:account", refreshAllowance);
+refreshAllowance();
 
 cameraButton.addEventListener("click", () => cameraInput.click());
 uploadButton.addEventListener("click", () => uploadInput.click());
@@ -262,46 +318,27 @@ function formatBytes(bytes) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const formData = new FormData(form);
-  const text = String(formData.get("text") || "").trim();
-  const url = normalizeHttpsUrl(formData.get("url"));
-
-  pageUrl.value = url;
+  const text = pageText.value.trim();
 
   formError.hidden = true;
   resultPanel.hidden = true;
 
   if (!text && !selectedImage) {
-    showError("Paste some page text or add a photo before starting the scan.");
+    showError("Paste some text or add a photo first.");
     pageText.focus();
     return;
-  }
-
-  const mode = currentMode();
-  if (mode === "document") {
-    const access = documentAccessState();
-    if (access === "signed-out") {
-      showError("Sign in to run a document review.");
-      openAccount();
-      return;
-    }
-    if (access === "none") {
-      showError("You have no document reviews left. Buy one for $1.99 in Pricing, or get Pro for unlimited reviews.");
-      return;
-    }
   }
 
   setLoading(true);
 
   try {
-    const response = await fetch("/.netlify/functions/keenshield-scan", {
+    const response = await fetch(SCAN_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({
-        url,
-        title: String(formData.get("title") || "").trim(),
         text,
-        ...(mode === "document" ? { mode } : {}),
+        browserId: browserId(),
         ...(selectedImage ? { image: selectedImage } : {})
       })
     });
@@ -311,7 +348,13 @@ form.addEventListener("submit", async (event) => {
       // The function's `error` strings are written for whoever is reading the
       // logs. Leave them there and show the visitor copy written for them.
       console.error("Keenshield scan failed:", response.status, data.error || "(no error field)");
-      showError(scanErrorMessage(response.status, data));
+      if (data && data.code === "free-scans-used") {
+        allowance = { ...(allowance || {}), free_scans: data.freeScans || 3, free_scans_left: 0 };
+        renderAllowance();
+        showError(outOfFreeScansMessage());
+      } else {
+        showError(scanErrorMessage(response.status, data));
+      }
       return;
     }
 
@@ -333,7 +376,7 @@ resetButton.addEventListener("click", () => {
   // `form.reset()` does not reach the photo: it lives outside the form's own
   // fields, in module state and the preview.
   clearPhoto();
-  updateMode();
+  renderAllowance();
   pageText.focus();
 });
 
@@ -343,8 +386,9 @@ function setLoading(isLoading) {
   submitButton.disabled = isLoading;
 }
 
+// Takes a string or a node (the out-of-free-scans message carries links).
 function showError(message) {
-  formError.textContent = message;
+  formError.replaceChildren(message);
   formError.hidden = false;
 }
 
@@ -355,14 +399,6 @@ function showError(message) {
 // internals. A status code also survives the backend rewording its payload,
 // which an equality check against the string did not.
 function scanErrorMessage(status, data) {
-  if (data && data.code === "signin-required") {
-    return "Sign in to run a document review.";
-  }
-
-  if (data && data.code === "no-credits") {
-    return "You have no document reviews left. Buy one for $1.99 in Pricing, or get Pro for unlimited reviews.";
-  }
-
   if (status === 503) {
     return "Your account couldn't be checked just now, so nothing was charged. Please try again shortly.";
   }
@@ -370,8 +406,8 @@ function scanErrorMessage(status, data) {
   if (status === 402) {
     const used = Number(data.scansUsed);
     return Number.isFinite(used) && used > 0
-      ? `That is all ${used} free scans for this install.`
-      : "No free scans remain for this install.";
+      ? `You've used all ${used} free scans.`
+      : "No free scans remain.";
   }
 
   if (status === 429) {
@@ -379,7 +415,7 @@ function scanErrorMessage(status, data) {
   }
 
   if (status === 413) {
-    return "That page text or photo is too large to scan. Try a shorter section or a new photo.";
+    return "That text or photo is too large to scan. Try a shorter section or a new photo.";
   }
 
   if (status === 415) {
@@ -387,7 +423,7 @@ function scanErrorMessage(status, data) {
   }
 
   if (status === 400) {
-    return "That submission could not be scanned. Paste the page copy or add a photo and try again.";
+    return "That could not be scanned. Paste the text or add a photo and try again.";
   }
 
   if (status === 401) {
@@ -416,44 +452,34 @@ function showResult(data) {
     item.textContent = flag;
     flagsList.append(item);
   });
-
   flagsWrap.hidden = flags.length === 0;
 
-  clausesList.replaceChildren();
-  const clauses = Array.isArray(data.clauses) ? data.clauses : [];
-  clauses.forEach((clause) => {
-    const item = document.createElement("li");
-    const quote = document.createElement("blockquote");
-    quote.textContent = clause.quote;
-    const meaning = document.createElement("p");
-    meaning.textContent = clause.meaning;
-    item.append(quote, meaning);
-    clausesList.append(item);
-  });
-  clausesWrap.hidden = clauses.length === 0;
-
-  const remaining = Number(data.credits_remaining);
-  creditsNote.hidden = !Number.isFinite(remaining);
-  if (Number.isFinite(remaining)) {
-    creditsNote.textContent = `1 document review used. ${remaining} left.`;
-    // Keep the account panel and the review option in step without a refetch.
-    const state = accountState();
-    if (state.account) {
-      state.account.documentCredits = remaining;
-      window.dispatchEvent(new CustomEvent("keenshield:account", { detail: state }));
-    }
+  // A short line on how the scan was covered and what's left.
+  const notes = [];
+  if (data.access === "free" && Number.isFinite(data.free_scans_left)) {
+    const left = data.free_scans_left;
+    notes.push(left > 0 ? `${left} free scan${left === 1 ? "" : "s"} left.` : "That was your last free scan.");
   }
+  if (data.access === "credit" && Number.isFinite(data.credits_remaining)) {
+    notes.push(`1 scan credit used. ${data.credits_remaining} left.`);
+    // Keep the account panel in step without a refetch.
+    const state = accountState();
+    if (state.account) state.account.scanCredits = data.credits_remaining;
+  }
+  if (Number.isFinite(data.text_truncated_at)) {
+    notes.push(`Only the first ${data.text_truncated_at.toLocaleString()} characters were read. Pro or a $1.99 scan reads up to 60,000.`);
+  }
+  scanNote.textContent = notes.join(" ");
+  scanNote.hidden = notes.length === 0;
 
   form.hidden = true;
   resultPanel.hidden = false;
-}
 
-function normalizeHttpsUrl(value) {
-  const url = String(value || "").trim();
-
-  if (!url) return "";
-  if (/^http:\/\//i.test(url)) return url.replace(/^http:\/\//i, "https://");
-  if (!/^https:\/\//i.test(url)) return `https://${url}`;
-
-  return url;
+  // The server has the real count; pick it up for the next scan. This also
+  // tells account.js about a spent credit.
+  if (data.access === "credit") {
+    window.dispatchEvent(new CustomEvent("keenshield:account", { detail: accountState() }));
+  } else {
+    refreshAllowance();
+  }
 }

@@ -915,7 +915,8 @@ html {
 /* How it works */
 .how,
 .privacy,
-.pricing {
+.pricing,
+.business {
   max-width: 1440px;
   margin: 0 auto;
   padding: clamp(64px, 8vw, 120px) 5vw;
@@ -1346,7 +1347,8 @@ select:focus {
 
   .hero,
   .privacy,
-  .waitlist {
+  .waitlist,
+  .business {
     grid-template-columns: 1fr;
   }
 
@@ -1383,8 +1385,13 @@ select:focus {
 
   .how,
   .privacy,
-  .pricing {
+  .pricing,
+  .business {
     padding: 56px 22px;
+  }
+
+  .business-fields {
+    grid-template-columns: 1fr;
   }
 
   .demo-window {
@@ -1413,7 +1420,7 @@ select:focus {
   }
 }
 
-/* ── Accounts, checkout and document review ──────────────────── */
+/* ── Accounts, checkout and free scans ──────────────────── */
 
 .site-nav .nav-account {
   padding: 10px 14px;
@@ -1443,68 +1450,8 @@ select:focus {
   cursor: pointer;
 }
 
-.scan-mode {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.scan-allowance {
   margin: 0 0 22px;
-  padding: 0;
-  border: 0;
-}
-
-.scan-mode legend {
-  margin-bottom: 10px;
-  padding: 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.scan-mode-option {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  background: rgba(250, 247, 238, 0.6);
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
-}
-
-.scan-mode-option:hover {
-  border-color: var(--moss);
-}
-
-.scan-mode-option:has(input:checked) {
-  border-color: var(--ink);
-  background: var(--cream);
-  box-shadow: 4px 4px 0 var(--paper-deep);
-}
-
-.scan-mode-option input {
-  margin: 3px 0 0;
-  accent-color: var(--ink);
-}
-
-.scan-mode-option b {
-  display: block;
-  font-family: var(--display);
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.scan-mode-option small {
-  display: block;
-  margin-top: 4px;
-  color: rgba(32, 37, 31, 0.62);
-  font-size: 0.66rem;
-  line-height: 1.5;
-}
-
-.document-access {
-  margin: -8px 0 22px;
   padding: 10px 14px;
   border-left: 3px solid var(--green);
   background: rgba(73, 119, 92, 0.08);
@@ -1512,51 +1459,13 @@ select:focus {
   line-height: 1.6;
 }
 
-.document-access[data-tone="warn"] {
+.scan-allowance[data-tone="warn"] {
   border-left-color: var(--yellow);
   background: rgba(192, 139, 49, 0.1);
 }
 
-.document-access a {
+.scan-allowance a {
   color: inherit;
-}
-
-.clauses-wrap {
-  margin-top: 28px;
-  padding-top: 22px;
-  border-top: 1px solid var(--line);
-}
-
-.clauses-wrap > p {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.clauses-wrap ol {
-  display: grid;
-  gap: 18px;
-  margin: 16px 0 0;
-  padding-left: 20px;
-}
-
-.clauses-wrap li {
-  font-size: 0.74rem;
-  line-height: 1.6;
-}
-
-.clauses-wrap blockquote {
-  margin: 0 0 6px;
-  padding-left: 12px;
-  border-left: 2px solid var(--yellow);
-  font-family: var(--display);
-  font-size: 0.95rem;
-  font-style: italic;
-  line-height: 1.45;
-}
-
-.clauses-wrap li p {
-  margin: 0;
 }
 
 .credits-note {
@@ -1719,7 +1628,6 @@ select:focus {
 }
 
 @media (max-width: 640px) {
-  .scan-mode,
   .account-facts {
     grid-template-columns: 1fr;
   }
@@ -1739,4 +1647,63 @@ select:focus {
   text-transform: uppercase;
   opacity: 0.75;
   white-space: nowrap;
+}
+
+.form-error a {
+  color: inherit;
+  font-weight: 500;
+}
+
+/* ── For businesses & researchers ─────────────────────────── */
+
+.business {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(400px, 1.2fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+
+.business-head .lede {
+  max-width: 460px;
+}
+
+.business-form,
+.business-thanks {
+  position: relative;
+  padding: clamp(24px, 3.5vw, 44px);
+  border: 1px solid var(--ink);
+  background: rgba(250, 247, 238, 0.72);
+  box-shadow: 18px 18px 0 var(--paper-deep);
+}
+
+.business-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.business-wide {
+  grid-column: 1 / -1;
+}
+
+.business-form textarea {
+  min-height: 120px;
+}
+
+.business-thanks h3 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.business-thanks p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.business-thanks:focus {
+  outline: none;
 }

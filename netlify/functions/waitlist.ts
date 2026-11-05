@@ -1,16 +1,15 @@
 // ============================================================
 // KEENSHIELD — netlify/functions/waitlist.ts
 //
-// Collects emails from the pricing section ("tell me when Pro
-// launches") so demand for each plan can be measured before
-// payments go live.
+// Collects emails from the pricing section from people who want to
+// hear when the Chrome extension launches.
 // ============================================================
 
 import { db } from "../../db/index.js";
 import { waitlist } from "../../db/schema.js";
 import { clientIpOf, createRateLimiter, isTrustedOrigin, jsonResponse, readJsonBody, responseHeaders } from "../../lib/gate.js";
 
-const PLANS = ["launch", "pro", "family", "document", "teams"];
+const PLANS = ["launch"];
 
 const checkRateLimit = createRateLimiter({
   storeName: "keenshield-waitlist-rate-limits",

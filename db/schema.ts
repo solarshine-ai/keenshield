@@ -29,8 +29,7 @@ export const siteScores = pgTable(
   (table) => [uniqueIndex("site_scores_page_key_idx").on(table.pageKey)]
 );
 
-// People who asked to hear about launch or a team plan from the pricing
-// section.
+// People who asked to hear when the extension launches.
 export const waitlist = pgTable(
   "waitlist",
   {
@@ -52,14 +51,16 @@ export const accounts = pgTable(
   {
     // Lowercased, trimmed email. Matches the Netlify Identity user's email.
     email: text().primaryKey(),
-    // "pro" or "family", or null for no subscription.
+    // "pro", or null for no subscription. (Rows from the retired Family plan
+    // say "family" and are treated as Pro; see lib/entitlements.js.)
     plan: text(),
     // "month" or "year".
     planInterval: text("plan_interval"),
     planActive: boolean("plan_active").notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
-    // Single document reviews bought and not yet used or refunded.
+    // $1.99 single scan credits bought and not yet used or refunded. (The
+    // column name dates from when these were called document reviews.)
     documentCredits: integer("document_credits").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull()
@@ -70,7 +71,7 @@ export const accounts = pgTable(
   ]
 );
 
-// One row per single-document purchase, so a refund can find and remove
+// One row per single scan purchase, so a refund can find and remove
 // exactly the credit that payment bought.
 export const creditPurchases = pgTable(
   "credit_purchases",

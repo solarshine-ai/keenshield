@@ -10,8 +10,8 @@ The Anthropic API key stays in Netlify and is never sent to the browser.
 Keenshield is now built extension-first. The extension puts a 1–10 risk number
 on its toolbar shield, never blocks anything and never pops up, and the person
 clicks the shield to read why. keenshield.app is the extension's home: what it
-does, the bigger scanner, the trust and privacy section, pricing and a launch
-waitlist.
+does, the scanner, the trust and privacy section, pricing, a launch
+waitlist and a "For businesses & researchers" interest form.
 
 ## Setup
 1. Deploy this repository to Netlify.
@@ -28,8 +28,9 @@ waitlist.
      webhook to read what a checkout bought
    - `STRIPE_WEBHOOK_SECRET` = the signing secret (`whsec_…`) Stripe shows for
      the webhook endpoint below
-   - `KEENSHIELD_PAYMENT_LINK_IDS` = the IDs (`plink_…`) of Keenshield's five
-     payment links, comma-separated. Checkouts from any other link are ignored
+   - `KEENSHIELD_PAYMENT_LINK_IDS` = the IDs (`plink_…`) of Keenshield's three
+     payment links (Pro yearly, Pro monthly, single scan), comma-separated.
+     Checkouts from any other link are ignored
 3. Redeploy after saving the variables.
 
 No `ANTHROPIC_BASE_URL` setting is required. When Netlify AI Gateway supplies one,
@@ -92,10 +93,11 @@ extension, your own tooling. It is one shared secret with no per-user revocation
 which is why it is an owner hatch and not a paid tier.
 
 ## What it does
-- Receives `{ url, title, text, image, installId, userToken }` from the extension
-  or the public page
+- Receives `{ url, title, text, image, installId, browserId, userToken }` from
+  the extension or the public page
 - Sends the page text and/or photo to Claude with a scam/fine-print analysis prompt
-- Returns `{ risk_level, flags, summary }`
+- Returns `{ risk_level, flags, summary }`: Clear / Worth knowing / High concern,
+  the things to watch for, and what it really means in plain words
 - Never exposes the API key to the browser
 
 ### Photo input
@@ -121,10 +123,10 @@ photo to a few hundred kilobytes and, as a side effect of the canvas
 round-trip, strips the EXIF metadata (including location) from what is sent.
 
 ## Limits
-Two independent limits sit in front of the Claude call. A request has to pass
-both, and passing one says nothing about the other. Each is checked before any
-Claude call is made, so a blocked request costs nothing. A request carrying
-`KEENSHIELD_OWNER_TOKEN` skips both.
+Two independent limits sit in front of the Claude call: a per-IP rate limit, and
+a free scan allowance. A request has to pass both, and passing one says nothing
+about the other. Each is checked before any Claude call is made, so a blocked
+request costs nothing. A request carrying `KEENSHIELD_OWNER_TOKEN` skips both.
 
 ### Per-IP rate limit (abuse speed)
 A rolling window of **20 requests per hour per IP**, counted in the
@@ -148,13 +150,37 @@ The extension identifies itself with an `installId` in the request body: a
 `crypto.randomUUID()` generated the first time it runs and kept in
 `chrome.storage.local`, so it survives across scans but differs per install.
 
-**Requests with no `installId` are not metered by this limit at all.** That is
-how the public page at `https://keenshield.netlify.app` keeps working — the site
-has no install concept yet, so it has nothing to count against. This also means
-the limit is only as strong as the client's honesty: anything that can send an
-HTTP request can omit or rotate `installId` and get fresh scans. It exists to
-shape the free tier for ordinary extension users, not to stop a determined
-caller. Real enforcement needs the accounts work below.
+This is only as strong as the client's honesty: anything that can send an
+HTTP request can rotate `installId` and get fresh scans. It shapes the free
+tier for ordinary extension users rather than stopping a determined caller.
+
+### Website free scans
+The scanner on keenshield.app gets **3 free scans**, counted in the same
+`keenshield-scan-counts` store:
+
+- per signed-in account (keyed by a hash of the email), so they follow the
+  person across browsers;
+- for signed-out visitors, per browser, using a random `browserId` the page
+  keeps in `localStorage` (falling back to a hash of the network address if
+  none is sent).
+
+A free scan reads up to 8,000 characters. Once they're used, a scan needs Pro
+(unlimited) or one $1.99 scan credit (one full scan of any length, up to 60,000
+characters). With neither, the endpoint returns:
+
+```
+402  {"error": "Free scans used", "code": "free-scans-used", "scansUsed": 3, "freeScans": 3, "signedIn": false}
+```
+
+and the page shows "You've used your 3 free scans. Get one more scan for $1.99
+or go Pro for unlimited." A free scan or credit that fails to produce a result
+is handed back. `POST { "action": "allowance", "browserId": "…" }` returns
+`{ free_scans, free_scans_left, unlimited }` without scanning, so the page can
+show what's left. Website results also carry `access` (`free`, `credit` or
+`plan`) and `free_scans_left` or `credits_remaining`.
+
+Website metering applies to requests from Keenshield's own origin that carry no
+`installId`. Shared-secret callers with neither ID stay unmetered, as before.
 
 If Netlify Blobs is ever unreachable, both limits fall back to an in-memory
 counter that resets on cold start and isn't shared between instances. That is a
@@ -172,22 +198,22 @@ email:
 
 | Plan | Price | What it unlocks |
 |------|-------|-----------------|
-| Pro | $4.99 / month or $39.99 / year | No free scan limit, unlimited document reviews |
-| Family | $5.99 / month or $59.99 / year | Same as Pro for the buyer's account (member invites coming soon) |
-| Single document review | $1.99 once | One credit, spent by one document review |
+| Free | $0 | 3 scans on keenshield.app, 5 in the extension |
+| Pro (individuals and businesses) | $4.99 / month or $39.99 / year | Unlimited website scans, up to 60,000 characters each |
+| Single scan | $1.99 once | One credit, spent by one full scan of up to 60,000 characters |
 
-**Document review mode.** The scanner takes `"mode": "document"` for a full
-lease or contract: up to 60,000 characters, reviewed clause by clause, with a
-`clauses` array in the result. It needs a signed-in account (`401` with
-`code: "signin-required"` otherwise). An active Pro or Family plan covers it.
-Without one, it spends one credit (`402` with `code: "no-credits"` when there
-are none). The credit is spent before the AI call so two reviews can't share
-one, and handed back if the review fails.
+A credit is spent only once the free scans are used, before the AI call so two
+scans can't share one, and handed back if the scan fails. Credits need a
+signed-in account; a signed-out visitor who clicks a buy button is asked to
+sign in or check out with the email they'll sign in with. The credit column is
+still called `document_credits` in the database, from when credits were sold as
+document reviews.
 
-A signed-in subscriber also skips the per-install free scan limit.
+The extension can't sign in yet, so it keeps its 5 free scans regardless of
+plan. Accounts left over from the retired Family plan are treated as Pro.
 
 `GET /api/account` returns the signed-in person's plan and remaining credits
-for the website.
+(`scanCredits`) for the website.
 
 ### Stripe webhook (`/api/stripe-webhook`)
 Stripe calls `https://keenshield.app/api/stripe-webhook` after each billing
@@ -197,7 +223,7 @@ minutes old gets `400` before anything else happens.
 
 | Event | Effect |
 |-------|--------|
-| `checkout.session.completed` | Turns on Pro or Family, or adds a document credit, for the buyer's email |
+| `checkout.session.completed` | Turns on Pro, or adds a scan credit, for the buyer's email |
 | `checkout.session.async_payment_succeeded` | The same, for payments that settle later (bank debits) |
 | `customer.subscription.deleted` | Turns that subscription's plan off |
 | `charge.refunded` (full refunds only) | Removes the credit that payment bought or, for a payment on a Keenshield subscription, turns that plan off |
@@ -225,10 +251,8 @@ The browser copy of `@netlify/identity` in `public/vendor/` is generated with
 `npm run vendor:identity`. Re-run it after upgrading the package.
 
 ## Not done yet (intentionally — for later)
-- **Family members**: Family currently unlocks the buyer's own account. Adding
-  up to four more people to the plan still needs to be built.
-- **Extension sign-in**: the extension stays on 5 free deep scans. Paid plans
-  apply on keenshield.app.
+- **Extension sign-in**: coming soon. Until then the extension stays on 5 free
+  deep scans, and paid plans apply on keenshield.app.
 - **Install IDs are self-reported**: an install ID is just a string the client sends, so the free-tier limit only holds for ordinary extension users.
 
 ## The shield number (`/api/site-score`)
@@ -256,22 +280,30 @@ number. The extension side is written up in
 
 ## Waitlist (`/api/waitlist`)
 The waitlist form saves `{ email, plan }` to the `waitlist` table, for people
-waiting on the extension's launch or on team plans. Plans are
-`launch`, `pro`, `family`, `document` and `teams`. Only Keenshield's own site
-can post to it, with a per-IP limit and a honeypot field against bots.
+waiting on the extension's launch (`plan` is always `launch`). Only
+Keenshield's own site can post to it, with a per-IP limit and a honeypot field
+against bots.
+
+## Business interest form (Netlify Forms)
+The "For businesses & researchers" section on the homepage is a Netlify Form
+named `business-interest` (name, email, company, role, interest, message),
+with a `bot-field` honeypot. Submissions show up under **Forms** in the
+Netlify dashboard; set up email notifications there.
 
 ## Project structure
 - `public/` is the website: the extension homepage (`index.html`, `home.js`),
   the scanner (`app.js`), and the privacy policy and terms pages.
 - `netlify/functions/keenshield-scan.js` is the deep scan (`claude-sonnet-5-5`).
 - `netlify/functions/site-score.ts` is the shield number.
-- `netlify/functions/waitlist.ts` is the launch and teams waitlist.
+- `netlify/functions/waitlist.ts` is the launch waitlist.
 - `netlify/functions/stripe-webhook.ts` turns plans and credits on and off.
   Its logic is in `lib/stripe-webhook.js`, tested in `test/stripe-webhook.test.js`.
 - `netlify/functions/account.ts` reports the signed-in person's plan.
 - `db/billing.ts` reads and writes plans and credits. `lib/entitlements.js`
   decides what an account can do.
 - `public/account.js` is sign-in and the buy buttons.
+- `lib/free-scans.js` decides the free scan allowances, tested in
+  `test/free-scans.test.js`.
 - `lib/gate.js` holds the shared rules for who may call the endpoints and how
   fast.
 - `db/schema.ts` is the database schema. Migrations in

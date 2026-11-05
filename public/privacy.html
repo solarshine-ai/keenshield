@@ -31,7 +31,7 @@
     <main class="legal">
       <p class="eyebrow">Privacy policy</p>
       <h1>What Keenshield sees, and what it does with it.</h1>
-      <p class="updated">Last updated November 3, 2026</p>
+      <p class="updated">Last updated November 5, 2026</p>
 
       <p>Keenshield is a browser extension and website that show how risky a web page or document is likely to be for you. This policy covers both. We've written it to be read, not skimmed past.</p>
 
@@ -48,15 +48,16 @@
 
       <h2>What is sent, and to whom</h2>
       <p>For decision pages, the page address (without anything after a "?" or "#") and up to 8,000 characters of visible text are sent to Keenshield's server, which runs on Netlify. The text is analyzed by Claude, an AI model made by Anthropic. Anthropic does not use data sent through its commercial API to train its models by default.</p>
-      <p>When you use the scanner on our website, the text or photo you provide is sent the same way. Photos are resized in your browser before upload, which also removes hidden location data.</p>
+      <p>When you use the scanner on our website, the text or photo you provide is sent the same way (up to 60,000 characters with Pro or a single scan). Photos are resized in your browser before upload, which also removes hidden location data.</p>
 
       <h2>What we keep</h2>
       <ul>
         <li><b>Page scores.</b> For each scored page, we keep the score, the reasons, a short summary and the page's address without query strings — so the next visitor gets the same answer instantly. We instruct the AI not to include personal details in these. We keep a fingerprint (hash) of the page text to tell when the page changes, but never the text itself.</li>
-        <li><b>An install ID.</b> A random ID created when you install the extension, used to count your free deep scans. It isn't linked to your name or email.</li>
+        <li><b>An install or browser ID.</b> A random ID created when you install the extension, or kept in your browser when you use our website's scanner, used only to count your free scans. It isn't linked to your name or email. If you're signed in, your website free scans are counted on your account instead, under a scrambled (hashed) form of your email.</li>
         <li><b>Abuse counts.</b> A count of requests per network (IP) address over the last hour, used only to stop abuse, and replaced as the hour rolls over.</li>
-        <li><b>Your email, if you give it.</b> If you join our list, we keep your email and the plan you're interested in, and use them only to tell you when Keenshield or that plan is available.</li>
-        <li><b>Your account, if you make one.</b> Your email and a password (stored by our sign-in provider, never readable by us), which plan you have, how many document reviews you have left, and the Stripe customer and subscription IDs that link your account to your payments.</li>
+        <li><b>Your email, if you give it.</b> If you join our list, we keep your email and use it only to tell you when the Keenshield extension is available.</li>
+        <li><b>Business enquiries.</b> If you use the "For businesses &amp; researchers" form, we keep what you send (name, email, company, role, interest and message) and use it only to reply to you. Keenshield's index scores businesses and websites, never people, and we never sell personal data.</li>
+        <li><b>Your account, if you make one.</b> Your email and a password (stored by our sign-in provider, never readable by us), whether you have Pro, how many single scans you have left, and the Stripe customer and subscription IDs that link your account to your payments.</li>
         <li><b>Payments.</b> Stripe handles checkout. Your card details go to Stripe, not to Keenshield, and are covered by <a href="https://stripe.com/privacy">Stripe's privacy policy</a>.</li>
         <li><b>Server logs.</b> Our hosting provider keeps routine technical logs for a limited time for security and troubleshooting.</li>
       </ul>

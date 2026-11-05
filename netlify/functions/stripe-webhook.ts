@@ -1,8 +1,8 @@
 // ============================================================
 // KEENSHIELD — netlify/functions/stripe-webhook.ts
 //
-// Stripe calls this after every billing event. It turns on Pro or
-// Family, adds single document review credits, and takes them away
+// Stripe calls this after every billing event. It turns on Pro,
+// adds $1.99 single scan credits, and takes them away
 // again on cancellation or refund. The logic lives in
 // lib/stripe-webhook.js; this file wires in the real database and
 // Stripe API key.

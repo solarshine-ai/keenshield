@@ -1,4 +1,5 @@
-// Keenshield homepage: the shield demo, the pricing toggle and the waitlist.
+// Keenshield homepage: the shield demo, the pricing toggle, the waitlist and
+// the business interest form.
 // Sign-in and the buy buttons live in account.js.
 // The scanner itself lives in app.js.
 
@@ -129,13 +130,11 @@ for (const button of billingButtons) {
 // ── Waitlist ─────────────────────────────────────────────────
 const waitlistForm = document.querySelector("#waitlist-form");
 const waitlistEmail = document.querySelector("#waitlist-email");
-const waitlistPlan = document.querySelector("#waitlist-plan");
 const waitlistStatus = document.querySelector("#waitlist-status");
 
-// Any "join" link elsewhere on the page preselects its plan in the form.
+// Any "get notified" link elsewhere on the page jumps to the form.
 for (const link of document.querySelectorAll("a[data-plan]")) {
   link.addEventListener("click", () => {
-    waitlistPlan.value = link.dataset.plan;
     // Let the jump to #get happen first, then put the cursor in the field.
     setTimeout(() => waitlistEmail.focus({ preventScroll: true }), 350);
   });
@@ -166,7 +165,7 @@ waitlistForm.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email,
-        plan: waitlistPlan.value,
+        plan: "launch",
         company: waitlistForm.elements.company.value
       })
     });
@@ -181,6 +180,59 @@ waitlistForm.addEventListener("submit", async (event) => {
     setWaitlistStatus("You're on the list. We'll email you when it's ready.", "success");
   } catch {
     setWaitlistStatus("Couldn't reach Keenshield. Check your connection and try again.", "error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// ── Business interest (Netlify Forms) ───────────────────────
+// The form is plain HTML that Netlify picks up at deploy. Submitting it here
+// keeps the visitor on the page and shows a thank-you instead of a redirect.
+// Without JavaScript it still posts normally.
+const businessForm = document.querySelector("#business-form");
+const businessStatus = document.querySelector("#business-status");
+const businessThanks = document.querySelector("#business-thanks");
+
+function setBusinessStatus(message, tone) {
+  businessStatus.textContent = message;
+  businessStatus.dataset.tone = tone || "";
+}
+
+businessForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const name = businessForm.elements.name.value.trim();
+  const email = businessForm.elements.email.value.trim();
+  if (!name) {
+    setBusinessStatus("Please tell us your name.", "error");
+    businessForm.elements.name.focus();
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setBusinessStatus("Please enter a valid email address.", "error");
+    businessForm.elements.email.focus();
+    return;
+  }
+
+  const button = businessForm.querySelector("button[type='submit']");
+  button.disabled = true;
+  setBusinessStatus("Sending…");
+
+  try {
+    const response = await fetch("/", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(new FormData(businessForm)).toString()
+    });
+    if (!response.ok) throw new Error(`Form submission failed with status ${response.status}`);
+
+    businessForm.reset();
+    businessForm.hidden = true;
+    businessThanks.hidden = false;
+    businessThanks.focus();
+  } catch (error) {
+    console.error("Keenshield business form error:", error);
+    setBusinessStatus("Couldn't send that. Check your connection and try again.", "error");
   } finally {
     button.disabled = false;
   }
