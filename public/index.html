@@ -29,6 +29,7 @@
         <a href="#scanner">Scanner</a>
         <a href="#privacy">Privacy</a>
         <a href="#pricing">Pricing</a>
+        <a href="#business">Business</a>
         <button id="account-button" class="nav-account" type="button" aria-haspopup="dialog">Sign in</button>
         <a class="nav-cta" href="#get" data-plan="launch">Get Keenshield</a>
       </nav>
@@ -108,9 +109,10 @@
           <p class="eyebrow">The bigger scanner</p>
           <h2 id="scanner-intro-title" class="section-title">For everything the shield can't see.</h2>
           <p class="lede">
-            Paste a long agreement, or photograph a paper lease, contract,
-            receipt or sign with your phone. Keenshield reads it and surfaces
-            hidden costs, cancellation traps and suspicious requests.
+            Paste any agreement, or photograph a paper lease, contract,
+            receipt or sign with your phone. Keenshield tells you in plain
+            words what it really means and what to watch for. Your first 3
+            scans are free.
           </p>
           <div class="signal-key" aria-label="Risk level guide">
             <span><i class="dot dot-green"></i>Clear</span>
@@ -123,7 +125,7 @@
         <div class="scanner-heading">
           <div>
             <p class="step-label">01 / Inspect</p>
-            <h2 id="scanner-title">Scan text or a photo</h2>
+            <h2 id="scanner-title">Paste it or snap it</h2>
           </div>
           <svg class="scan-glyph" viewBox="0 0 64 64" aria-hidden="true">
             <path d="M10 22V10h12M42 10h12v12M54 42v12H42M22 54H10V42" />
@@ -132,45 +134,17 @@
         </div>
 
         <form id="scan-form" novalidate>
-          <fieldset class="scan-mode">
-            <legend>What are you scanning?</legend>
-            <label class="scan-mode-option">
-              <input type="radio" name="mode" value="page" checked />
-              <span>
-                <b>Quick scan</b>
-                <small>Free · a page or short agreement, up to 8,000 characters</small>
-              </span>
-            </label>
-            <label class="scan-mode-option">
-              <input type="radio" name="mode" value="document" />
-              <span>
-                <b>Document review</b>
-                <small>A full lease or contract, clause by clause, up to 60,000 characters · $1.99, or included with Pro and Family</small>
-              </span>
-            </label>
-          </fieldset>
-          <p id="document-access" class="document-access" hidden></p>
-
-          <div class="field-row">
-            <label class="field">
-              <span>Page URL <small>optional</small></span>
-              <input id="url" name="url" type="url" placeholder="https://example.com/terms" />
-            </label>
-            <label class="field">
-              <span>Page title <small>optional</small></span>
-              <input id="title" name="title" type="text" placeholder="Subscription checkout" />
-            </label>
-          </div>
+          <p id="scan-allowance" class="scan-allowance" role="status" aria-live="polite" hidden></p>
 
           <label class="field text-field">
-            <span>Page text <small>or attach a photo below</small></span>
+            <span>The fine print <small>or add a photo below</small></span>
             <textarea
               id="text"
               name="text"
               rows="10"
-              placeholder="Paste the terms, checkout copy, or agreement here…"
+              placeholder="Paste the terms, checkout page, lease or agreement here…"
             ></textarea>
-            <span class="field-meta"><b id="character-count">0</b> / <span id="character-limit">8,000</span> characters analyzed</span>
+            <span class="field-meta"><b id="character-count">0</b> / <span id="character-limit">8,000</span> characters read<span id="character-upsell"> · up to 60,000 with Pro or a $1.99 scan</span></span>
           </label>
 
           <div class="field capture-field">
@@ -232,7 +206,7 @@
           <div id="form-error" class="form-error" role="alert" hidden></div>
 
           <button class="scan-button" type="submit">
-            <span>Run Keenshield scan</span>
+            <span>Scan</span>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
@@ -254,15 +228,11 @@
           <h3 id="result-title"></h3>
           <p id="result-summary" class="result-summary"></p>
           <div id="flags-wrap" class="flags-wrap" hidden>
-            <p>What stood out</p>
+            <p>What to watch for</p>
             <ul id="flags"></ul>
           </div>
-          <div id="clauses-wrap" class="clauses-wrap" hidden>
-            <p>Clause by clause</p>
-            <ol id="clauses"></ol>
-          </div>
-          <p id="credits-note" class="credits-note" hidden></p>
-          <button id="reset-button" class="reset-button" type="button">Scan another page</button>
+          <p id="scan-note" class="credits-note" hidden></p>
+          <button id="reset-button" class="reset-button" type="button">Scan something else</button>
         </article>
       </section>
 
@@ -305,7 +275,7 @@
           </div>
           <div>
             <dt>What we do keep</dt>
-            <dd>A random install ID to count free scans, a short-lived count of requests per network address to stop abuse, and your email only if you join the list below.</dd>
+            <dd>A random install or browser ID to count free scans (or a count on your account if you sign in), a short-lived count of requests per network address to stop abuse, and your email only if you join the list or send us a message below.</dd>
           </div>
           <div>
             <dt>Not legal advice</dt>
@@ -332,23 +302,24 @@
             <ul>
               <li>The risk number on every site</li>
               <li>The top reason for each score</li>
-              <li>5 deep scans to try the full breakdown</li>
+              <li>3 free scans on keenshield.app</li>
+              <li>5 free deep scans in the extension</li>
             </ul>
             <a class="plan-button" href="#scanner">Try a free scan</a>
           </article>
 
           <article class="plan plan-featured">
-            <p class="plan-tag">Most popular</p>
+            <p class="plan-tag">For individuals and businesses</p>
             <h3>Pro</h3>
             <p class="price">
               <b data-price-yearly="$39.99" data-price-monthly="$4.99">$39.99</b>
               <span data-per-yearly="/ year — about $3.33 a month" data-per-monthly="/ month">/ year — about $3.33 a month</span>
             </p>
             <ul>
-              <li>Every reason, the exact clause, and what it means for you</li>
-              <li>Unlimited deep scans and document reviews on keenshield.app</li>
-              <li>Extension sign-in coming soon. Until then, the extension keeps its 5 free deep scans</li>
-              <li>Photo and document scanner for leases and contracts</li>
+              <li>Unlimited scans on keenshield.app</li>
+              <li>Full-length leases and contracts, up to 60,000 characters a scan</li>
+              <li>Photo scanner for paper leases, contracts and receipts</li>
+              <li>Extension sign-in coming soon. Until then, the extension keeps its 5 free scans</li>
               <li>History of what you've agreed to and subscribed to <small class="coming-soon">coming soon</small></li>
               <li>Alerts when a site you use changes its terms <small class="coming-soon">coming soon</small></li>
             </ul>
@@ -364,32 +335,18 @@
           </article>
 
           <article class="plan">
-            <h3>Family</h3>
+            <h3>One scan</h3>
             <p class="price">
-              <b data-price-yearly="$59.99" data-price-monthly="$5.99">$59.99</b>
-              <span data-per-yearly="/ year" data-per-monthly="/ month">/ year</span>
+              <b>$1.99</b>
+              <span>once, no subscription</span>
             </p>
             <ul>
-              <li>Everything in Pro, on your account</li>
-              <li>Family member invites coming soon</li>
-                          </ul>
-            <a
-              class="plan-button"
-              data-checkout="family"
-              href="https://buy.stripe.com/00w8wI186cge0dCgTg3AY04"
-              data-checkout-yearly="https://buy.stripe.com/00w8wI186cge0dCgTg3AY04"
-              data-checkout-monthly="https://buy.stripe.com/bJe6oA6sqcgebWk1Ym3AY05"
-              data-label-yearly="Buy Family — $59.99 a year"
-              data-label-monthly="Buy Family — $5.99 a month"
-            >Buy Family — $59.99 a year</a>
+              <li>One full scan of any length, up to 60,000 characters</li>
+              <li>Text or a photo</li>
+              <li>Used whenever you need it, after your free scans</li>
+            </ul>
+            <a class="plan-button" data-checkout="document" href="https://buy.stripe.com/8x214g8Ay7ZY0dCcD03AY01">Buy one scan — $1.99</a>
           </article>
-        </div>
-
-        <div class="pricing-extras">
-          <p><b>One document, no subscription — $1.99.</b> Review a single lease or contract with the full breakdown, clause by clause.
-            <a data-checkout="document" href="https://buy.stripe.com/8x214g8Ay7ZY0dCcD03AY01">Buy a document review — $1.99</a></p>
-          <p><b>Using Keenshield at work?</b> Team plans with an admin view are coming.
-            <a href="#get" data-plan="teams">Talk to us about teams</a></p>
         </div>
 
         <p class="checkout-note">
@@ -401,19 +358,12 @@
           <div id="get" class="waitlist-anchor"></div>
           <div class="waitlist-copy">
             <h3>Be first in line</h3>
-            <p>Keenshield is coming to the Chrome Web Store. Leave your email and we'll tell you when the extension is ready, or when team plans open. Nothing else.</p>
+            <p>Keenshield is coming to the Chrome Web Store. Leave your email and we'll tell you when the extension is ready. Nothing else.</p>
           </div>
           <div class="waitlist-fields">
             <label class="field">
               <span>Email</span>
               <input id="waitlist-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
-            </label>
-            <label class="field">
-              <span>Interested in</span>
-              <select id="waitlist-plan" name="plan">
-                <option value="launch">The extension — tell me at launch</option>
-                <option value="teams">Teams</option>
-              </select>
             </label>
             <label class="hp-field" aria-hidden="true">
               Company <input name="company" type="text" tabindex="-1" autocomplete="off" />
@@ -425,6 +375,75 @@
             <p id="waitlist-status" class="waitlist-status" role="status" aria-live="polite"></p>
           </div>
         </form>
+      </section>
+
+      <section class="business" id="business" aria-labelledby="business-title">
+        <div class="business-head">
+          <p class="step-label">For businesses &amp; researchers</p>
+          <h2 id="business-title" class="section-title">Fine-print risk, by the business.</h2>
+          <p class="lede">
+            KeenShield keeps a growing index of fine-print risk across websites.
+            We never sell personal data, only scores about businesses. Tell us
+            what you'd use it for.
+          </p>
+        </div>
+
+        <form
+          id="business-form"
+          class="business-form"
+          name="business-interest"
+          method="POST"
+          action="/"
+          data-netlify="true"
+          netlify-honeypot="bot-field"
+          novalidate
+        >
+          <input type="hidden" name="form-name" value="business-interest" />
+          <p class="hp-field" aria-hidden="true">
+            <label>Don't fill this out <input name="bot-field" tabindex="-1" autocomplete="off" /></label>
+          </p>
+          <div class="business-fields">
+            <label class="field">
+              <span>Name</span>
+              <input name="name" type="text" autocomplete="name" required />
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input name="email" type="email" autocomplete="email" placeholder="you@company.com" required />
+            </label>
+            <label class="field">
+              <span>Company</span>
+              <input name="company" type="text" autocomplete="organization" />
+            </label>
+            <label class="field">
+              <span>Role</span>
+              <input name="role" type="text" autocomplete="organization-title" />
+            </label>
+            <label class="field business-wide">
+              <span>What are you interested in?</span>
+              <select name="interest" required>
+                <option value="Company risk data / API">Company risk data / API</option>
+                <option value="KeenShield for my team">KeenShield for my team</option>
+                <option value="Getting KeenShield Verified">Getting KeenShield Verified</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label class="field business-wide">
+              <span>Message</span>
+              <textarea name="message" rows="5" placeholder="What would you use it for?"></textarea>
+            </label>
+            <button class="scan-button business-wide" type="submit">
+              <span>Send</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+            <p id="business-status" class="waitlist-status business-wide" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <div id="business-thanks" class="business-thanks" role="status" tabindex="-1" hidden>
+          <h3>Thank you — we got your message.</h3>
+          <p>We read every one and will reply to the email you gave us.</p>
+        </div>
       </section>
     </main>
 
@@ -488,7 +507,7 @@
         <h2 id="account-email"></h2>
         <dl class="account-facts">
           <div><dt>Plan</dt><dd id="account-plan">Free</dd></div>
-          <div><dt>Document reviews</dt><dd id="account-credits">0</dd></div>
+          <div><dt>Scan credits</dt><dd id="account-credits">0</dd></div>
         </dl>
         <p id="account-thanks" class="account-note" hidden>
           Thanks for your purchase. It can take a few seconds to show up here.

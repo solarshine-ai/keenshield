@@ -10,7 +10,7 @@ import {
   signStripePayload,
   verifyStripeSignature
 } from "../lib/stripe-webhook.js";
-import { accountSummary, documentAccessFor, hasActivePlan, normalizeEmail } from "../lib/entitlements.js";
+import { accountSummary, hasActivePlan, normalizeEmail, paidScanAccessFor } from "../lib/entitlements.js";
 
 const SECRET = "whsec_test_secret_for_unit_tests";
 const NOW = 1_800_000_000_000;
@@ -103,12 +103,10 @@ function createMemoryStore() {
   };
 }
 
-// The five Keenshield payment links, as configured in KEENSHIELD_PAYMENT_LINK_IDS.
+// The three Keenshield payment links, as configured in KEENSHIELD_PAYMENT_LINK_IDS.
 const PAYMENT_LINKS = {
   pro_year: "plink_pro_year",
   pro_month: "plink_pro_month",
-  family_year: "plink_family_year",
-  family_month: "plink_family_month",
   document: "plink_document"
 };
 const ALLOWED_LINKS = Object.values(PAYMENT_LINKS);
@@ -116,17 +114,13 @@ const ALLOWED_LINKS = Object.values(PAYMENT_LINKS);
 function paymentLinkFor(sessionId) {
   if (sessionId.startsWith("cs_doc")) return PAYMENT_LINKS.document;
   if (sessionId.startsWith("cs_pro_year")) return PAYMENT_LINKS.pro_year;
-  if (sessionId.startsWith("cs_family_month")) return PAYMENT_LINKS.family_month;
-  if (sessionId.startsWith("cs_family_year")) return PAYMENT_LINKS.family_year;
   return PAYMENT_LINKS.pro_month;
 }
 
 const LINE_ITEMS = {
   cs_pro_month: [{ quantity: 1, description: "Keenshield Pro", price: { unit_amount: 499, recurring: { interval: "month" } } }],
   cs_pro_year: [{ quantity: 1, description: "Keenshield Pro", price: { unit_amount: 3999, recurring: { interval: "year" } } }],
-  cs_family_month: [{ quantity: 1, description: "Keenshield Family", price: { unit_amount: 599, recurring: { interval: "month" } } }],
-  cs_family_year: [{ quantity: 1, description: "Keenshield Family", price: { unit_amount: 5999, recurring: { interval: "year" } } }],
-  cs_doc: [{ quantity: 1, description: "Single document review", price: { unit_amount: 199, recurring: null } }]
+  cs_doc: [{ quantity: 1, description: "Single scan", price: { unit_amount: 199, recurring: null } }]
 };
 
 function checkoutEvent(id, sessionId, overrides = {}) {
@@ -217,13 +211,20 @@ describe("classifyCheckout", () => {
   test("matches each subscription price to its plan", () => {
     assert.deepEqual(classifyCheckout({ mode: "subscription" }, LINE_ITEMS.cs_pro_month), { kind: "plan", plan: "pro", interval: "month" });
     assert.deepEqual(classifyCheckout({ mode: "subscription" }, LINE_ITEMS.cs_pro_year), { kind: "plan", plan: "pro", interval: "year" });
-    assert.deepEqual(classifyCheckout({ mode: "subscription" }, LINE_ITEMS.cs_family_month), { kind: "plan", plan: "family", interval: "month" });
-    assert.deepEqual(classifyCheckout({ mode: "subscription" }, LINE_ITEMS.cs_family_year), { kind: "plan", plan: "family", interval: "year" });
   });
 
   test("falls back to the product name when the price changes", () => {
-    const items = [{ description: "", price: { unit_amount: 6999, recurring: { interval: "year" }, product: { name: "Keenshield Family" } } }];
-    assert.deepEqual(classifyCheckout({ mode: "subscription" }, items), { kind: "plan", plan: "family", interval: "year" });
+    const items = [{ description: "", price: { unit_amount: 4999, recurring: { interval: "year" }, product: { name: "Keenshield Pro" } } }];
+    assert.deepEqual(classifyCheckout({ mode: "subscription" }, items), { kind: "plan", plan: "pro", interval: "year" });
+  });
+
+  test("the retired Family prices and name no longer match a plan", () => {
+    for (const items of [
+      [{ quantity: 1, description: "Keenshield Family", price: { unit_amount: 599, recurring: { interval: "month" } } }],
+      [{ quantity: 1, description: "Keenshield Family", price: { unit_amount: 5999, recurring: { interval: "year" } } }]
+    ]) {
+      assert.equal(classifyCheckout({ mode: "subscription" }, items), null);
+    }
   });
 
   test("returns null for a subscription it can't recognise", () => {
@@ -231,7 +232,7 @@ describe("classifyCheckout", () => {
     assert.equal(classifyCheckout({ mode: "subscription" }, items), null);
   });
 
-  test("a one-time payment is document review credits, one per unit", () => {
+  test("a one-time payment is single scan credits, one per unit", () => {
     assert.deepEqual(classifyCheckout({ mode: "payment" }, LINE_ITEMS.cs_doc), { kind: "document", credits: 1 });
     assert.deepEqual(classifyCheckout({ mode: "payment" }, [{ quantity: 3, price: { unit_amount: 199 } }]), { kind: "document", credits: 3 });
   });
@@ -282,9 +283,7 @@ describe("handleStripeWebhook: rejecting bad requests", () => {
 describe("handleStripeWebhook: checkout.session.completed", () => {
   for (const [sessionId, plan, interval] of [
     ["cs_pro_month", "pro", "month"],
-    ["cs_pro_year", "pro", "year"],
-    ["cs_family_month", "family", "month"],
-    ["cs_family_year", "family", "year"]
+    ["cs_pro_year", "pro", "year"]
   ]) {
     test(`turns on ${plan} (${interval}) for the buyer's email`, async () => {
       const store = createMemoryStore();
@@ -300,13 +299,13 @@ describe("handleStripeWebhook: checkout.session.completed", () => {
     });
   }
 
-  test("adds one document review credit", async () => {
+  test("adds one scan credit", async () => {
     const store = createMemoryStore();
     await deliver(store, checkoutEvent("evt_1", "cs_doc"));
     const account = store.state.accounts.get("buyer@example.com");
     assert.equal(account.documentCredits, 1);
     assert.equal(account.planActive, false);
-    assert.equal(documentAccessFor(account), "credit");
+    assert.equal(paidScanAccessFor(account), "credit");
   });
 
   test("two separate document purchases add two credits", async () => {
@@ -403,17 +402,17 @@ describe("handleStripeWebhook: duplicates", () => {
 describe("handleStripeWebhook: turning access off", () => {
   test("customer.subscription.deleted ends the plan", async () => {
     const store = createMemoryStore();
-    await deliver(store, checkoutEvent("evt_1", "cs_family_year"));
+    await deliver(store, checkoutEvent("evt_1", "cs_pro_year"));
     const result = await deliver(store, {
       id: "evt_2",
       type: "customer.subscription.deleted",
-      data: { object: { id: "sub_cs_family_year", customer: "cus_123" } }
+      data: { object: { id: "sub_cs_pro_year", customer: "cus_123" } }
     });
     assert.equal(result.body.applied, "plan-ended");
     const account = store.state.accounts.get("buyer@example.com");
     assert.equal(account.planActive, false);
     assert.equal(hasActivePlan(account), false);
-    assert.equal(documentAccessFor(account), "none");
+    assert.equal(paidScanAccessFor(account), "none");
   });
 
   test("cancelling one subscription leaves other accounts alone", async () => {
@@ -517,17 +516,35 @@ describe("entitlements", () => {
   test("an inactive plan gives nothing, even with the plan name still set", () => {
     const account = { plan: "pro", planActive: false, documentCredits: 0 };
     assert.equal(hasActivePlan(account), false);
-    assert.equal(documentAccessFor(account), "none");
+    assert.equal(paidScanAccessFor(account), "none");
     assert.equal(accountSummary("a@b.co", account).plan, null);
   });
 
-  test("an active plan includes document reviews without spending credits", () => {
-    assert.equal(documentAccessFor({ plan: "family", planActive: true, documentCredits: 2 }), "plan");
+  test("an active Pro plan includes scans without spending credits", () => {
+    assert.equal(paidScanAccessFor({ plan: "pro", planActive: true, documentCredits: 2 }), "plan");
+  });
+
+  test("without a plan, a scan credit pays for a scan", () => {
+    const account = { plan: null, planActive: false, documentCredits: 2 };
+    assert.equal(paidScanAccessFor(account), "credit");
+    assert.equal(accountSummary("a@b.co", account).scanCredits, 2);
+  });
+
+  test("an account from the retired Family plan keeps working as Pro", () => {
+    const account = { plan: "family", planInterval: "year", planActive: true, documentCredits: 0 };
+    assert.equal(hasActivePlan(account), true);
+    assert.equal(paidScanAccessFor(account), "plan");
+    assert.equal(accountSummary("a@b.co", account).plan, "pro");
+    assert.equal(hasActivePlan({ ...account, planActive: false }), false);
+  });
+
+  test("an unknown plan name gives nothing", () => {
+    assert.equal(hasActivePlan({ plan: "teams", planActive: true }), false);
   });
 
   test("signed out or no row means no access", () => {
-    assert.equal(documentAccessFor(null), "none");
-    assert.deepEqual(accountSummary("a@b.co", null), { email: "a@b.co", plan: null, planInterval: null, documentCredits: 0 });
+    assert.equal(paidScanAccessFor(null), "none");
+    assert.deepEqual(accountSummary("a@b.co", null), { email: "a@b.co", plan: null, planInterval: null, scanCredits: 0 });
   });
 });
 
@@ -535,9 +552,7 @@ describe("handleStripeWebhook: only Keenshield's payment links", () => {
   for (const [name, sessionId] of [
     ["Pro yearly", "cs_pro_year"],
     ["Pro monthly", "cs_pro_month"],
-    ["Family yearly", "cs_family_year"],
-    ["Family monthly", "cs_family_month"],
-    ["single document", "cs_doc"]
+    ["single scan", "cs_doc"]
   ]) {
     test(`acts on a checkout from the ${name} link`, async () => {
       const store = createMemoryStore();
@@ -626,7 +641,7 @@ describe("handleStripeWebhook: only Keenshield's payment links", () => {
 
   test("another business's subscription ending changes nothing", async () => {
     const store = createMemoryStore();
-    await deliver(store, checkoutEvent("evt_1", "cs_family_month"));
+    await deliver(store, checkoutEvent("evt_1", "cs_pro_month"));
     await deliver(store, { id: "evt_2", type: "customer.subscription.deleted", data: { object: { id: "sub_other_business", customer: "cus_123" } } });
     assert.equal(store.state.accounts.get("buyer@example.com").planActive, true);
   });

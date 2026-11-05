@@ -125,8 +125,8 @@ export async function getAccount(email: string): Promise<Account | null> {
   return row ?? null;
 }
 
-// Spends one document credit if there is one. Returns the credits left, or
-// null when there was none to spend. One statement, so two reviews started at
+// Spends one scan credit if there is one. Returns the credits left, or
+// null when there was none to spend. One statement, so two scans started at
 // once can't both spend the same last credit.
 export async function spendDocumentCredit(email: string): Promise<number | null> {
   const [row] = await db
@@ -137,7 +137,7 @@ export async function spendDocumentCredit(email: string): Promise<number | null>
   return row ? row.documentCredits : null;
 }
 
-// Gives back a credit spent on a review that then failed.
+// Gives back a credit spent on a scan that then failed.
 export async function returnDocumentCredit(email: string): Promise<void> {
   await db
     .update(accounts)

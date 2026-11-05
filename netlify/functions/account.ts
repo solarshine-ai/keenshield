@@ -2,8 +2,8 @@
 // KEENSHIELD — netlify/functions/account.ts
 //
 // Tells the signed-in person what they have: their plan and how many
-// single document review credits are left. The website uses it to
-// show account status and whether a document review is available.
+// $1.99 single scan credits are left. The website uses it to show
+// account status.
 // ============================================================
 
 import { getUser } from "@netlify/identity";

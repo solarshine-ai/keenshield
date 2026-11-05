@@ -18,7 +18,7 @@ import {
 } from "/vendor/netlify-identity.js";
 
 const state = { user: null, account: null };
-// app.js reads this for the document review option.
+// app.js reads this for the scanner's free scans and credits.
 window.keenshieldAccount = state;
 
 const dialog = document.querySelector("#account-dialog");
@@ -49,7 +49,7 @@ let mode = "login";
 // The Stripe link someone clicked before signing in, so they carry on to it.
 let pendingCheckout = null;
 
-const PLAN_NAMES = { pro: "Pro", family: "Family" };
+const PLAN_NAMES = { pro: "Pro" };
 const INTERVAL_NAMES = { month: "monthly", year: "yearly" };
 
 // ── State ────────────────────────────────────────────────────
@@ -92,8 +92,8 @@ function render() {
     accountPlan.textContent = planLabel(account);
     accountCredits.textContent =
       account && account.plan
-        ? "Included with your plan"
-        : `${account ? account.documentCredits : 0} left`;
+        ? "Unlimited with Pro"
+        : `${account ? account.scanCredits : 0} left`;
   } else {
     accountButton.textContent = "Sign in";
   }
@@ -152,18 +152,20 @@ function continueToCheckout() {
   return true;
 }
 
-for (const link of document.querySelectorAll("a[data-checkout]")) {
-  link.addEventListener("click", (event) => {
-    event.preventDefault();
-    // home.js keeps href pointed at the monthly or yearly link.
-    const url = link.href;
-    if (state.user) {
-      window.location.href = checkoutUrlFor(url, state.user.email);
-    } else {
-      openDialog({ checkoutUrl: url });
-    }
-  });
-}
+// Delegated, so buy links the scanner adds later (after the free scans run
+// out) work the same as the pricing cards.
+document.addEventListener("click", (event) => {
+  const link = event.target instanceof Element ? event.target.closest("a[data-checkout]") : null;
+  if (!link) return;
+  event.preventDefault();
+  // home.js keeps href pointed at the monthly or yearly link.
+  const url = link.href;
+  if (state.user) {
+    window.location.href = checkoutUrlFor(url, state.user.email);
+  } else {
+    openDialog({ checkoutUrl: url });
+  }
+});
 
 // ── Auth errors ──────────────────────────────────────────────
 function authErrorMessage(error) {
@@ -281,7 +283,7 @@ signOutButton.addEventListener("click", async () => {
   }
 });
 
-// app.js updates the credit count after a review; keep the panel in step.
+// app.js updates the credit count after a scan; keep the panel in step.
 window.addEventListener("keenshield:account", render);
 
 onAuthChange((event, user) => {
