@@ -35,8 +35,34 @@ if (!stored) {
   } catch {
     $("address").textContent = "";
   }
-  list($("reasons"), stored.reasons?.length ? stored.reasons : [stored.topReason]);
-  $("summary").textContent = stored.reasons?.length ? stored.summary : "";
+
+  if (stored.site) {
+    // The number is the higher of "Site" (the address and the company's own
+    // pages) and, on decision pages, "This page". Each shows its own reasons.
+    $("reasons").hidden = true;
+    $("summary").hidden = true;
+    $("parts").hidden = false;
+    showPart("site", stored.site, stored.site.scored
+      ? "Nothing worrying in this company's own pages or address."
+      : "The address looks normal. Keenshield hasn't read this company's own pages yet.");
+    $("site-domain").textContent = stored.site.domain ? `(${stored.site.domain})` : "";
+    if (stored.page) {
+      $("page-part").hidden = false;
+      showPart("page", stored.page, "Nothing worrying on this page.");
+    }
+  } else {
+    // A score from an older server response without the site/page split.
+    list($("reasons"), stored.reasons?.length ? stored.reasons : [stored.topReason]);
+    $("summary").textContent = stored.reasons?.length ? stored.summary : "";
+  }
+}
+
+function showPart(name, part, emptyText) {
+  $(`${name}-score`).textContent = String(part.score);
+  $(`${name}-score`).dataset.level = part.level || "";
+  const reasons = Array.isArray(part.reasons) ? part.reasons : [];
+  list($(`${name}-reasons`), reasons.length ? reasons : [part.summary || emptyText]);
+  $(`${name}-summary`).textContent = reasons.length ? part.summary || "" : "";
 }
 
 $("deep-button")?.addEventListener("click", async () => {

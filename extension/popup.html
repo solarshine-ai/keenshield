@@ -25,6 +25,19 @@
       </div>
       <ul id="reasons"></ul>
       <p id="summary" class="summary"></p>
+
+      <div id="parts" hidden>
+        <section class="part" aria-labelledby="site-label">
+          <p class="part-head"><span id="site-label">Site</span>: <b id="site-score"></b> <span id="site-domain" class="muted"></span></p>
+          <ul id="site-reasons"></ul>
+          <p id="site-summary" class="summary"></p>
+        </section>
+        <section id="page-part" class="part" aria-labelledby="page-label" hidden>
+          <p class="part-head"><span id="page-label">This page</span>: <b id="page-score"></b></p>
+          <ul id="page-reasons"></ul>
+          <p id="page-summary" class="summary"></p>
+        </section>
+      </div>
       <button id="deep-button" type="button">Full breakdown of this page</button>
     </section>
 

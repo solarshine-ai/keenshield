@@ -27,7 +27,8 @@ async function updateShield(tabId, page) {
     await chrome.action.setBadgeText({ tabId, text: String(result.score) });
     await chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_COLORS[result.level] || BADGE_COLORS.yellow });
     await chrome.action.setBadgeTextColor?.({ tabId, color: "#faf7ee" });
-    await chrome.action.setTitle({ tabId, title: `Keenshield: ${result.score} — click to see why` });
+    const parts = [result.site ? `Site: ${result.site.score}` : "", result.page ? `This page: ${result.page.score}` : ""].filter(Boolean);
+    await chrome.action.setTitle({ tabId, title: `Keenshield: ${result.score}${parts.length ? ` (${parts.join(", ")})` : ""} — click to see why` });
     await chrome.storage.session.set({ [`score-${tabId}`]: { ...result, url: page.url } });
   } catch (err) {
     console.error("Keenshield score failed:", err);
