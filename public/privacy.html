@@ -38,13 +38,19 @@
       <h2>The short version</h2>
       <ul>
         <li>Keenshield never blocks pages or pops anything up. It shows a number on its icon.</li>
+        <li>On ordinary pages, the extension sends only the page's address — never its text.</li>
         <li>Page text is only sent for analysis on pages that ask you to agree, pay, subscribe, sign up or share personal details — and it isn't stored.</li>
+        <li>To score a company, Keenshield's own server reads that company's public pages itself. Nothing about you is stored with that score.</li>
         <li>We don't sell or share your browsing, show ads, or take money to change a score.</li>
       </ul>
 
       <h2>What the extension reads</h2>
-      <p>On every page, the extension checks the web address for warning signs such as lookalike domains, raw IP addresses, or a missing secure connection.</p>
+      <p>On every page, the extension sends the web address to Keenshield's server, which checks it for warning signs such as lookalike domains, raw IP addresses, or a missing secure connection. On ordinary pages, the address is the only thing sent. The page's text stays in your browser.</p>
       <p>On pages that look like a decision — a checkout, sign-up, subscription, terms or payment page — it also reads the page's visible text and whether the page has password, payment or "I agree" fields. It does not read what you type into those fields.</p>
+
+      <h2>How a company gets its site score</h2>
+      <p>The number on the shield also reflects the company behind the site, not just the page you're on. To work that out, Keenshield's server visits the company's own public pages itself — its homepage and, where they exist, pages like its terms, privacy policy, refund policy, cancellation and pricing pages. It reads at most six pages, the same pages anyone can open without signing in, and identifies itself as "KeenShieldBot". It never uses your browser, your cookies or your login, so it never sees what you saw.</p>
+      <p>That text is analyzed by Claude (see below) and not kept. Each company is scored at most once every 30 days and the result is shared with everyone. The score is about the company. Nothing about you — not your address, your network address or the fact that you visited — is stored with it.</p>
 
       <h2>What is sent, and to whom</h2>
       <p>For decision pages, the page address (without anything after a "?" or "#") and up to 8,000 characters of visible text are sent to Keenshield's server, which runs on Netlify. The text is analyzed by Claude, an AI model made by Anthropic. Anthropic does not use data sent through its commercial API to train its models by default.</p>
@@ -52,6 +58,7 @@
 
       <h2>What we keep</h2>
       <ul>
+        <li><b>Site scores and their history.</b> For each company's site (for example "example.com"), we keep its score, the reasons, a short summary, which of its public pages were read, when it was scored and how many times the score has been shown. When a page or site score is created or changes, we add a line to a score history (the address or site, the score and its main reason, and the date) so past scores are never lost. None of this records who looked.</li>
         <li><b>Page scores.</b> For each scored page, we keep the score, the reasons, a short summary and the page's address without query strings — so the next visitor gets the same answer instantly. We instruct the AI not to include personal details in these. We keep a fingerprint (hash) of the page text to tell when the page changes, but never the text itself.</li>
         <li><b>An install or browser ID.</b> A random ID created when you install the extension, or kept in your browser when you use our website's scanner, used only to count your free scans. It isn't linked to your name or email. If you're signed in, your website free scans are counted on your account instead, under a scrambled (hashed) form of your email.</li>
         <li><b>Abuse counts.</b> A count of requests per network (IP) address over the last hour, used only to stop abuse, and replaced as the hour rolls over.</li>
@@ -66,7 +73,7 @@
       <ul>
         <li>Sell, rent or share your browsing history or personal information.</li>
         <li>Show ads or use affiliate links in the extension.</li>
-        <li>Let a business pay to raise or lower its score. A score only changes when the page changes.</li>
+        <li>Let a business pay to raise or lower its score. A score only changes when the page or the company's own pages change.</li>
       </ul>
 
       <h2>Your choices</h2>

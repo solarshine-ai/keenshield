@@ -29,6 +29,46 @@ export const siteScores = pgTable(
   (table) => [uniqueIndex("site_scores_page_key_idx").on(table.pageKey)]
 );
 
+// One row per site (registrable domain, e.g. "example.com"), shared by every
+// Keenshield user. Keenshield's server reads the company's own public pages
+// — homepage, terms, privacy, refund, cancellation and pricing — and scores
+// the company once every 30 days. Nothing about any visitor is stored here.
+export const siteDomainScores = pgTable(
+  "site_domain_scores",
+  {
+    id: serial().primaryKey(),
+    domain: text().notNull(),
+    score: integer().notNull(),
+    riskLevel: text("risk_level").notNull(),
+    topReason: text("top_reason").notNull().default(""),
+    reasons: jsonb().$type<string[]>().notNull().default([]),
+    summary: text().notNull().default(""),
+    // The page addresses that were read to make this score.
+    pagesChecked: jsonb("pages_checked").$type<string[]>().notNull().default([]),
+    scoredAt: timestamp("scored_at").defaultNow().notNull(),
+    hits: integer().notNull().default(0)
+  },
+  (table) => [uniqueIndex("site_domain_scores_domain_idx").on(table.domain)]
+);
+
+// Every score Keenshield has ever given, so a score change is never lost.
+// A row is added whenever a page score or a site score is created or
+// changes; rows are never updated or deleted.
+export const scoreHistory = pgTable(
+  "score_history",
+  {
+    id: serial().primaryKey(),
+    // The page key (hostname + path) for kind "page", the domain for "site".
+    key: text().notNull(),
+    kind: text().notNull(), // "page" | "site"
+    score: integer().notNull(),
+    riskLevel: text("risk_level").notNull(),
+    topReason: text("top_reason").notNull().default(""),
+    scoredAt: timestamp("scored_at").defaultNow().notNull()
+  },
+  (table) => [index("score_history_key_idx").on(table.kind, table.key, table.scoredAt)]
+);
+
 // People who asked to hear when the extension launches.
 export const waitlist = pgTable(
   "waitlist",

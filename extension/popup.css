@@ -96,6 +96,28 @@ li::before {
   margin: 10px 0 0;
 }
 
+.part {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ink);
+}
+
+.part-head {
+  margin: 0;
+  font: 600 14px Georgia, serif;
+}
+
+.part-head b[data-level="green"] { color: var(--green); }
+.part-head b[data-level="yellow"] { color: var(--yellow); }
+.part-head b[data-level="red"] { color: var(--red); }
+
+.part-head .muted {
+  display: inline;
+  font: 11px ui-monospace, "DM Mono", Menlo, monospace;
+}
+
+.part ul { margin-top: 8px; }
+
 button,
 .upgrade {
   display: block;

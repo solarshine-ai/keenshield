@@ -44,11 +44,43 @@ address only.
   "reasons": ["...", "..."],
   "summary": "1–2 plain-English sentences",
   "source": "fresh",
-  "scoredAt": "2026-10-11T06:56:11.127Z"
+  "scoredAt": "2026-10-11T06:56:11.127Z",
+  "site": {
+    "domain": "example.com",
+    "score": 4,
+    "level": "yellow",
+    "reasons": ["..."],
+    "summary": "...",
+    "source": "cached",
+    "scored": true,
+    "scoredAt": "2026-10-20T09:12:00.000Z",
+    "pagesChecked": 4
+  },
+  "page": { "score": 6, "level": "yellow", "reasons": ["..."], "summary": "...", "scoredAt": "..." }
 }
 ```
 
-- `score` is 1–10. `level` is `green` (1–3), `yellow` (4–6) or `red` (7–10).
+- `score` (the shield number) is the highest of the address checks, the site
+  score and, on decision pages, the page score.
+- `site` is what the popup shows as **Site: X**: the address checks and the
+  company's site score together. The site score comes from Keenshield's
+  server reading the company's own public pages (homepage, `/terms`,
+  `/terms-of-service`, `/legal`, `/privacy`, `/refund-policy`, `/cancel`,
+  `/pricing` — at most 6 requests, only pages that exist), scored once per 30
+  days per registrable domain and shared by everyone. `site.source` is
+  `cached`, `fresh`, `stale` (an older score kept because re-scoring wasn't
+  possible), `limited` (the 200-per-day cap on new site scorings was reached),
+  `unreachable` or `skipped`. When there's no site score, `scored` is false
+  and the address checks stand in.
+- `page` is **This page: Y**, present only on decision pages; `null` otherwise.
+- The server's page fetcher only reaches public hostnames over http/https on
+  default ports, checks every DNS answer and redirect hop against private and
+  internal address ranges, follows at most 3 redirects, gives up after 8
+  seconds and reads at most 200 KB per page. It identifies itself as
+  `KeenShieldBot/1.0 (+https://keenshield.app)`. See `lib/safe-fetch.js`.
+- Every new or changed page or site score is appended to `score_history`.
+
+- Every score is 1–10. `level` is `green` (1–3), `yellow` (4–6) or `red` (7–10).
 - `source` says how the score was made:
   - `quick`: address checks only, no AI.
   - `cached`: someone already scored this page, so the result came back instantly.
